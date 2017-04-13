@@ -1,12 +1,21 @@
 import java.io.*;
 import java.net.*;
+import java.nio.file.Files;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.*;
+import java.security.MessageDigest;
+import javax.xml.bind.DatatypeConverter;
 
 
 public class Server implements Runnable {
+    private static String LOGIN = "tnguyen1";
+    private static String HOSTNAME;
+    private static String IP_ADDRESS;
+    private static int PORT_NUMBER;
+
     /**
      *
      */
@@ -15,26 +24,49 @@ public class Server implements Runnable {
 
     /**
      *
-     * @param ipAddr
-     * @param port
+     * @param hostNames
+     * @param ipAddresses
+     * @param ports
      */
     private static void add(ArrayList<String> hostNames, ArrayList<String> ipAddresses, ArrayList<Integer> ports) {
         try {
+            // Create necessary file paths for read/write
+            String hostsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/";
+            File dir = new File(hostsFilePath);
+            dir.mkdirs();
+
+            // Create files and buffered writers
+            hostsFilePath += "hostInfo.txt";
+            dir = new File(hostsFilePath);
+            Files.deleteIfExists(dir.toPath());
+            BufferedWriter bw = new BufferedWriter(new FileWriter(hostsFilePath, true));
+
+            // Append this host's (the master's) configuration information to the file
+            bw.write(HOSTNAME + " " + IP_ADDRESS + " " + PORT_NUMBER);
+            bw.newLine();
+            bw.flush();
+
+
             for (int i = 0; i < hostNames.size(); i++) {
                 // Connect with host
                 Socket s = new Socket();
                 s.connect(new InetSocketAddress(ipAddresses.get(i), ports.get(i)));
-                System.out.println(hostNames.get(i) + " on " + ipAddresses.get(i) + " at " + ports.get(i));
 
                 // Create a string with host's IP Address and Port Number
+                String hostInfo = hostNames.get(i) + " " + ipAddresses.get(i) + " " + ports.get(i);
+                System.out.println("added: " + hostInfo);
 
                 // Append this string to a file in /tmp/<login>/linda/<hostName>/nets
-
+                bw.write(hostInfo);
+                bw.newLine();
+                bw.flush();
 
                 // TODO: /tmp/<login>, /tmp/<login>/linda, /tmp/<login>/linda/<name>/nets --> mode 777
                 // TODO: nets and tuples --> mode 666
                 s.close();
             }
+
+            bw.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -66,13 +98,28 @@ public class Server implements Runnable {
      * This method is implemented assuming we are given a tuple that begins with "(" and ends with ")"
      */
     private static String hash(String rawTuple) {
-        // TODO how to add quotation marks in quotation marks in the passed rawTuple
+        // Remove extra delimiters in the raw tuple
         rawTuple = rawTuple.replace("(", "");
         rawTuple = rawTuple.replace(")", "");
         rawTuple = rawTuple.replace(",", "");
         rawTuple = rawTuple.replace(" ", "");
 
-        System.out.println(rawTuple);
+        System.out.println("Removed delimiters: " + rawTuple);
+
+        // Hash using the MD5 Sum
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            md.update(rawTuple.getBytes());
+            byte[] digest = md.digest();
+            String myHash = DatatypeConverter.printHexBinary(digest).toUpperCase();
+
+            System.out.println("Hash: " + myHash);
+        } catch(NoSuchAlgorithmException e) {
+            System.out.println(e.getStackTrace());
+        }
+
+        // Mod operation on this hash based on how many hosts you have
+
         return rawTuple;
     }
 
@@ -91,10 +138,8 @@ public class Server implements Runnable {
         // Search through the parsed command
         if (parsedCommand.find()) {
 
-            // Run this code block if it identifies the "add" command
+            // "add" command was inputted in Linda
             if (parsedCommand.group(0).equalsIgnoreCase("add")) {
-                System.out.println(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
-
                 ArrayList<String> hostNames = new ArrayList<String>();
                 ArrayList<String> ipAddresses = new ArrayList<String>();
                 ArrayList<Integer> ports = new ArrayList<Integer>();
@@ -111,19 +156,22 @@ public class Server implements Runnable {
                 add(hostNames, ipAddresses, ports);
             }
 
-            // Run this code block if it identifies the "in" command
+            // "in" command was inputted in Linda
             else if (parsedCommand.group(0).equalsIgnoreCase("in")) {
                 System.out.println(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
             }
 
-            // Run this code block if it identifies the "rd" command
+            // "rd" command was inputted in Linda
             else if (parsedCommand.group(0).equalsIgnoreCase("rd")) {
                 System.out.println(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
             }
 
-            // Run this code block if it identifies the "out" command
+            // "out" command was inputted in Linda
             else if (parsedCommand.group(0).equalsIgnoreCase("out")) {
                 System.out.println(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
+                if (parsedCommand.find()) {
+                    hash(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
+                }
             }
         }
     }
@@ -162,28 +210,30 @@ public class Server implements Runnable {
         Socket clientSocket;
         DataInputStream input;
         DataOutputStream output;
-        InetAddress ipAddr;
-        int randPort;
         Thread lindaTerminal;
 
-//        hash("(abc, 3)");
+        try {
+            HOSTNAME = args[0];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            System.out.println("Please specify the host name when running the executable");
+            return;
+        }
 
         try {
             // Create a TCP server socket on a random available port
             while(true) {
-                randPort = ThreadLocalRandom.current().nextInt(1024, 65535 + 1);
+                PORT_NUMBER = ThreadLocalRandom.current().nextInt(1024, 65535 + 1);
                 try {
-                    host = new ServerSocket(randPort);
+                    host = new ServerSocket(PORT_NUMBER);
                     break;
                 } catch(IOException e) {
                     continue;
                 }
             }
 
-            // TODO Establish a port without having to instantiate the ServerSocket
             // Get & display IP of the current machine
-            ipAddr = InetAddress.getLocalHost();
-            System.out.println(ipAddr.getHostAddress() + " at port number: " + randPort);
+            IP_ADDRESS = InetAddress.getLocalHost().getHostAddress();
+            System.out.println(IP_ADDRESS + " at port number: " + PORT_NUMBER);
 
             // Create a new thread to accept Linda Terminal Commands
             lindaTerminal = new Thread(new Server());
