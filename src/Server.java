@@ -1,7 +1,10 @@
 import java.io.*;
 import java.net.*;
+import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.*;
+
 
 public class Server implements Runnable {
     /**
@@ -15,22 +18,26 @@ public class Server implements Runnable {
      * @param ipAddr
      * @param port
      */
-    private void add(String ipAddr, int port) {
+    private static void add(ArrayList<String> hostNames, ArrayList<String> ipAddresses, ArrayList<Integer> ports) {
         try {
-            // Connect with host
-            Socket s = new Socket();
-            s.connect(new InetSocketAddress(ipAddr, port));
+            for (int i = 0; i < hostNames.size(); i++) {
+                // Connect with host
+                Socket s = new Socket();
+                s.connect(new InetSocketAddress(ipAddresses.get(i), ports.get(i)));
+                System.out.println(hostNames.get(i) + " on " + ipAddresses.get(i) + " at " + ports.get(i));
 
-            System.out.println("Connection Successful");
+                // Create a string with host's IP Address and Port Number
 
-            s.close();
+                // Append this string to a file in /tmp/<login>/linda/<hostName>/nets
+
+
+                // TODO: /tmp/<login>, /tmp/<login>/linda, /tmp/<login>/linda/<name>/nets --> mode 777
+                // TODO: nets and tuples --> mode 666
+                s.close();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        // include the host's IP address and Port number in /tmp/<login>/linda/<hostName>/nets
-
-        // Traverse through the nets file and make a client request to all other existing hosts to also add the new host
     }
 
 
@@ -75,8 +82,50 @@ public class Server implements Runnable {
      * @param rawCommand
      */
     private static void parseUserCommand(String rawCommand) {
-        // Call add(), in(), rd(), our out() with their respective arguments
-        System.out.println(rawCommand);
+        // Remove all spaces
+        rawCommand = rawCommand.replace(" ","");
+
+        // Match all regex provided in the pattern. This should return command without "()" delimiters
+        Matcher parsedCommand = Pattern.compile("([^()]+)").matcher(rawCommand);
+
+        // Search through the parsed command
+        if (parsedCommand.find()) {
+
+            // Run this code block if it identifies the "add" command
+            if (parsedCommand.group(0).equalsIgnoreCase("add")) {
+                System.out.println(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
+
+                ArrayList<String> hostNames = new ArrayList<String>();
+                ArrayList<String> ipAddresses = new ArrayList<String>();
+                ArrayList<Integer> ports = new ArrayList<Integer>();
+
+                // Place all host information in ArrayLists and add these hosts
+                while (parsedCommand.find()) {
+                    // Split into array by using commas as delimiters
+                    String[] tokenizedCommand = rawCommand.substring(parsedCommand.start(), parsedCommand.end()).split(",");
+
+                    hostNames.add(tokenizedCommand[0]);
+                    ipAddresses.add(tokenizedCommand[1]);
+                    ports.add(Integer.parseInt(tokenizedCommand[2]));
+                }
+                add(hostNames, ipAddresses, ports);
+            }
+
+            // Run this code block if it identifies the "in" command
+            else if (parsedCommand.group(0).equalsIgnoreCase("in")) {
+                System.out.println(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
+            }
+
+            // Run this code block if it identifies the "rd" command
+            else if (parsedCommand.group(0).equalsIgnoreCase("rd")) {
+                System.out.println(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
+            }
+
+            // Run this code block if it identifies the "out" command
+            else if (parsedCommand.group(0).equalsIgnoreCase("out")) {
+                System.out.println(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
+            }
+        }
     }
 
 
@@ -148,6 +197,7 @@ public class Server implements Runnable {
             }
 
             // Close the sockets?
+            // TODO: CHeck for when input stream is null. Once it is, then we close the socket
         } catch (IOException e) {
             e.printStackTrace();
         }
