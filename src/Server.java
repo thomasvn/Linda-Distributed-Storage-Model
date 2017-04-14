@@ -1,4 +1,5 @@
 import java.io.*;
+import java.math.BigInteger;
 import java.net.*;
 import java.nio.file.Files;
 import java.security.NoSuchAlgorithmException;
@@ -11,6 +12,7 @@ import javax.xml.bind.DatatypeConverter;
 
 
 public class Server implements Runnable {
+    // TODO: MAKE GETTERS AND SETTERS
     private static String LOGIN = "tnguyen1";
     private static String HOSTNAME;
     private static String IP_ADDRESS;
@@ -95,36 +97,6 @@ public class Server implements Runnable {
 
 
     /**
-     * This method is implemented assuming we are given a tuple that begins with "(" and ends with ")"
-     */
-    private static String hash(String rawTuple) {
-        // Remove extra delimiters in the raw tuple
-        rawTuple = rawTuple.replace("(", "");
-        rawTuple = rawTuple.replace(")", "");
-        rawTuple = rawTuple.replace(",", "");
-        rawTuple = rawTuple.replace(" ", "");
-
-        System.out.println("Removed delimiters: " + rawTuple);
-
-        // Hash using the MD5 Sum
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            md.update(rawTuple.getBytes());
-            byte[] digest = md.digest();
-            String myHash = DatatypeConverter.printHexBinary(digest).toUpperCase();
-
-            System.out.println("Hash: " + myHash);
-        } catch(NoSuchAlgorithmException e) {
-            System.out.println(e.getStackTrace());
-        }
-
-        // Mod operation on this hash based on how many hosts you have
-
-        return rawTuple;
-    }
-
-
-    /**
      *
      * @param rawCommand
      */
@@ -132,7 +104,7 @@ public class Server implements Runnable {
         // Remove all spaces
         rawCommand = rawCommand.replace(" ","");
 
-        // Match all regex provided in the pattern. This should return command without "()" delimiters
+        // Match all regex provided in the pattern. This will group tokens by the "()" delimiters
         Matcher parsedCommand = Pattern.compile("([^()]+)").matcher(rawCommand);
 
         // Search through the parsed command
@@ -170,10 +142,88 @@ public class Server implements Runnable {
             else if (parsedCommand.group(0).equalsIgnoreCase("out")) {
                 System.out.println(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
                 if (parsedCommand.find()) {
-                    hash(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
+                    getHostID(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
                 }
             }
         }
+    }
+
+
+    /**
+     *
+     * @param rawTuple
+     * @return
+     */
+    private static int getHostID(String rawTuple) {
+        String hashedTuple = hash(rawTuple);
+        int hostID = hexToDecimal(hashedTuple);
+
+        // Calculate the number of hosts by reading the number of lines in the file
+        int lines = 0;
+        try {
+            String hostsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/hostInfo.txt";
+            BufferedReader reader = new BufferedReader(new FileReader(hostsFilePath));
+            while (reader.readLine() != null) {
+                lines++;
+            }
+            reader.close();
+        } catch(java.io.IOException e) {
+            System.out.println(e.getStackTrace());
+        }
+
+        // Mod the md5 hash with by the number of hosts in the distributed system
+        hostID %= lines;
+
+        System.out.println("Host ID: " + hostID);
+
+        return hostID;
+    }
+
+
+    /**
+     *
+     * @param s
+     * @return
+     */
+    private static int hexToDecimal(String s) {
+        String digits = "0123456789ABCDEF";
+        s = s.toUpperCase();
+        int val = 0;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            int d = digits.indexOf(c);
+            val = 16 * val + d;
+        }
+        if (val < 0) val *= -1;
+        return val;
+    }
+
+
+    /**
+     * This method is implemented assuming we are given a tuple that begins with "(" and ends with ")"
+     * @param rawTuple
+     * @return
+     */
+    private static String hash(String rawTuple) {
+        String md5Hash = null;
+
+        // Remove extra delimiters in the raw tuple
+        rawTuple = rawTuple.replace("(", "");
+        rawTuple = rawTuple.replace(")", "");
+        rawTuple = rawTuple.replace(",", "");
+        rawTuple = rawTuple.replace(" ", "");
+
+        // Hash using the MD5 Sum
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            md.update(rawTuple.getBytes());
+            md5Hash = new BigInteger(1, md.digest()).toString(16);
+            System.out.println("Hash: " + md5Hash);
+        } catch(NoSuchAlgorithmException e) {
+            System.out.println(e.getStackTrace());
+        }
+
+        return md5Hash;
     }
 
 
