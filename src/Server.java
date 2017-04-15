@@ -17,6 +17,7 @@ public class Server implements Runnable {
     private static String HOSTNAME;
     private static String IP_ADDRESS;
     private static int PORT_NUMBER;
+    private static String listOfHosts = "";
 
     /**
      *
@@ -25,12 +26,9 @@ public class Server implements Runnable {
 
 
     /**
-     *
-     * @param hostNames
-     * @param ipAddresses
-     * @param ports
+     * Appends all host names, ip addresses, and ports in the network to the file `hostInfo.txt`
      */
-    private static void add(ArrayList<String> hostNames, ArrayList<String> ipAddresses, ArrayList<Integer> ports) {
+    private static void add()   {
         try {
             // Create necessary file paths for read/write
             String hostsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/";
@@ -43,29 +41,13 @@ public class Server implements Runnable {
             Files.deleteIfExists(dir.toPath());
             BufferedWriter bw = new BufferedWriter(new FileWriter(hostsFilePath, true));
 
-            // Append this host's (the master's) configuration information to the file
-            bw.write(HOSTNAME + " " + IP_ADDRESS + " " + PORT_NUMBER);
-            bw.newLine();
-            bw.flush();
+            // Parse `listOfHosts` string and add to text file
+            String[] hostInfo = listOfHosts.split(",");
 
-
-            for (int i = 0; i < hostNames.size(); i++) {
-                // Connect with host
-                Socket s = new Socket();
-                s.connect(new InetSocketAddress(ipAddresses.get(i), ports.get(i)));
-
-                // Create a string with host's IP Address and Port Number
-                String hostInfo = hostNames.get(i) + " " + ipAddresses.get(i) + " " + ports.get(i);
-                System.out.println("added: " + hostInfo);
-
-                // Append this string to a file in /tmp/<login>/linda/<hostName>/nets
-                bw.write(hostInfo);
+            for (int i = 0; i < hostInfo.length; i++) {
+                bw.write(hostInfo[i]);
                 bw.newLine();
                 bw.flush();
-
-                // TODO: /tmp/<login>, /tmp/<login>/linda, /tmp/<login>/linda/<name>/nets --> mode 777
-                // TODO: nets and tuples --> mode 666
-                s.close();
             }
 
             bw.close();
@@ -73,6 +55,20 @@ public class Server implements Runnable {
             e.printStackTrace();
         }
     }
+
+
+    /**
+     * Makes sure that all hosts in the network have the same `hostInfo.txt` file in the nets directory
+     */
+    private static void addAllHosts() {
+        // Split `listOfHosts` by the commas
+
+        // Split `listOfHosts[]` by the spaces to Host Names, IP Addresses, Ports
+            // Open a socket, send a string of the hostview.txt,
+            // Handle the method in the `run()` method and call `add()` again
+    }
+
+    // Create a method to connect to other servers and add other machines to that server
 
 
     /**
@@ -112,20 +108,20 @@ public class Server implements Runnable {
 
             // "add" command was inputted in Linda
             if (parsedCommand.group(0).equalsIgnoreCase("add")) {
-                ArrayList<String> hostNames = new ArrayList<String>();
-                ArrayList<String> ipAddresses = new ArrayList<String>();
-                ArrayList<Integer> ports = new ArrayList<Integer>();
+                // Add this host to a String managed by this Server Instance
+                listOfHosts += (HOSTNAME + " " + IP_ADDRESS + " " + PORT_NUMBER + ",");
 
                 // Place all host information in ArrayLists and add these hosts
                 while (parsedCommand.find()) {
                     // Split into array by using commas as delimiters
                     String[] tokenizedCommand = rawCommand.substring(parsedCommand.start(), parsedCommand.end()).split(",");
 
-                    hostNames.add(tokenizedCommand[0]);
-                    ipAddresses.add(tokenizedCommand[1]);
-                    ports.add(Integer.parseInt(tokenizedCommand[2]));
+                    // Add this host to a String managed by this Server Instance
+                    listOfHosts += (tokenizedCommand[0] + " " + tokenizedCommand[1] + " " + tokenizedCommand[2] + ",");
                 }
-                add(hostNames, ipAddresses, ports);
+                System.out.println(listOfHosts);
+                add();
+                addAllHosts();
             }
 
             // "in" command was inputted in Linda
@@ -159,6 +155,7 @@ public class Server implements Runnable {
         int hostID = hexToDecimal(hashedTuple);
 
         // Calculate the number of hosts by reading the number of lines in the file
+        // TODO: Calculate the number of lines by splitting `listOfHosts` by the comma operator
         int lines = 0;
         try {
             String hostsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/hostInfo.txt";
@@ -302,4 +299,14 @@ public class Server implements Runnable {
             e.printStackTrace();
         }
     }
+
+    // TODO: /tmp/<login>, /tmp/<login>/linda, /tmp/<login>/linda/<name>/nets --> mode 777
+    // TODO: nets and tuples --> mode 666
+
+
+//    // Connect with host
+//    Socket s = new Socket();
+//    s.connect(new InetSocketAddress(ipAddresses.get(i), ports.get(i)));
+//
+//    s.close();
 }
