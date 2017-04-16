@@ -2,6 +2,7 @@ import java.io.*;
 import java.math.BigInteger;
 import java.net.*;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.*;
@@ -17,6 +18,8 @@ public class Server implements Runnable {
     private static int PORT_NUMBER;
     private static String listOfHosts = "";
 
+    // TODO: HANDLE WRONG USER INPUT
+
     /**
      *
      */
@@ -26,11 +29,17 @@ public class Server implements Runnable {
     /**
      * Appends all host names, ip addresses, and ports in the network to the file `hostInfo.txt`
      */
-    private static void add()   {
+    private static void add() {
         try {
-            // Create necessary file paths for read/write
+            // Create necessary file paths for the host's tuple space
+            String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/" + File.separator + "tuples.txt";
+            File dir = new File(tupleSpaceFilePath);
+            dir.mkdirs();
+            dir.createNewFile();
+
+            // Create necessary file paths for maintaining host information
             String hostsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/";
-            File dir = new File(hostsFilePath);
+            dir = new File(hostsFilePath);
             dir.mkdirs();
 
             // Create files and buffered writers
@@ -59,7 +68,7 @@ public class Server implements Runnable {
      * Makes sure that all hosts in the network have the same `hostInfo.txt` file in the nets directory. This method
      * would only be called by the "master" host
      */
-    private static void allHostsAddEachother() {
+    private static void allHostsAddEachOther() {
         String ipAddr;
         int portNum;
 
@@ -79,7 +88,8 @@ public class Server implements Runnable {
 
                 // Sending the string `listOfHosts` to specific host
                 OutputStream os = s.getOutputStream();
-                os.write(listOfHosts.getBytes());
+                String outputMessage = "add~" + listOfHosts;
+                os.write(outputMessage.getBytes());
                 os.close();
 
                 s.close();
@@ -106,9 +116,56 @@ public class Server implements Runnable {
 
     /**
      *
-     * @param hashedTuple
+     * @param rawTuple
      */
-    private static void out(String hashedTuple) {}
+    private static void out(String rawTuple) {
+        String hostInfo = null;
+
+        // Instantiate the tuple object
+        // TODO: Create a method to check if it is a valid tuple?
+        Tuple tuple = new Tuple(rawTuple);
+
+        // Retrieve the information of the correct host
+        try {
+            String hostsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/hostInfo.txt";
+            BufferedReader reader = new BufferedReader(new FileReader(hostsFilePath));
+
+            // Goes to the line in the text file of the correct host
+            int hostID = getHostID(rawTuple);
+            for (int i = 0; i < hostID; i++) {
+                reader.readLine();
+            }
+            hostInfo = reader.readLine();
+
+            reader.close();
+        } catch (FileNotFoundException e) {
+            System.out.println(e.getStackTrace());
+        } catch (IOException e) {
+            System.out.println(e.getStackTrace());
+        }
+
+        // Parse information about the host
+        String[] specificHostInfo = hostInfo.split(" ");
+        String ipAddr = specificHostInfo[1];
+        int portNum = Integer.parseInt(specificHostInfo[2]);
+
+        try {
+            // Create a socket connection to the correct host
+            Socket s = new Socket();
+            s.connect(new InetSocketAddress(ipAddr, portNum));
+
+            // Send a message in the datastream to write to the TupleSpace
+            OutputStream os = s.getOutputStream();
+            String outputMessage = "out~" + rawTuple;
+            System.out.println("Output Message: " + outputMessage);
+            os.write(outputMessage.getBytes());
+            os.close();
+
+            s.close();
+        } catch(IOException e) {
+            System.out.println(e.getStackTrace());
+        }
+    }
 
 
     /**
@@ -127,9 +184,6 @@ public class Server implements Runnable {
 
             // "add" command was inputted in Linda
             if (parsedCommand.group(0).equalsIgnoreCase("add")) {
-                // Add this host to a String managed by this Server Instance
-                listOfHosts += (HOSTNAME + " " + IP_ADDRESS + " " + PORT_NUMBER + ",");
-
                 // Place all host information in ArrayLists and add these hosts
                 while (parsedCommand.find()) {
                     // Split into array by using commas as delimiters
@@ -139,7 +193,15 @@ public class Server implements Runnable {
                     listOfHosts += (tokenizedCommand[0] + " " + tokenizedCommand[1] + " " + tokenizedCommand[2] + ",");
                 }
                 add();
-                allHostsAddEachother();
+                allHostsAddEachOther();
+            }
+
+            // "out" command was inputted in Linda
+            else if (parsedCommand.group(0).equalsIgnoreCase("out")) {
+                if (parsedCommand.find()) {
+                    System.out.println(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
+                    out(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
+                }
             }
 
             // "in" command was inputted in Linda
@@ -152,12 +214,43 @@ public class Server implements Runnable {
                 System.out.println(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
             }
 
-            // "out" command was inputted in Linda
-            else if (parsedCommand.group(0).equalsIgnoreCase("out")) {
-                System.out.println(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
-                if (parsedCommand.find()) {
-                    getHostID(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
-                }
+        }
+    }
+
+
+    /**
+     *
+     * @param command
+     */
+    private static void parseDataStreamCommand(String command) {
+        // Parse the DataStream Command
+        String[] parsedCommand = command.split("~");
+
+        for (int i = 0; i < parsedCommand.length; i++) {
+            System.out.println("Parsed Command: " + parsedCommand[i]);
+        }
+
+        if (parsedCommand[0].equals("add")) {
+            // Add the list of hosts
+            listOfHosts = parsedCommand[1];
+            add();
+            System.out.println("\nA Connection has been established!");
+        } else if (parsedCommand[0].equals("out")) {
+            try {
+                System.out.println("Program made it this far");
+
+                // Open a writer to the tuples file on this host
+                String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/tuples.txt";
+//                File dir = new File(tupleSpaceFilePath);
+                BufferedWriter bw = new BufferedWriter(new FileWriter(tupleSpaceFilePath, true));
+
+                // Write the tuple into the host's file
+                bw.write(parsedCommand[1]);
+                bw.newLine();
+                bw.flush();
+                bw.close();
+            } catch(IOException e) {
+                System.out.println(e.getStackTrace());
             }
         }
     }
@@ -172,19 +265,9 @@ public class Server implements Runnable {
         String hashedTuple = hash(rawTuple);
         int hostID = hexToDecimal(hashedTuple);
 
-        // Calculate the number of hosts by reading the number of lines in the file
-        // TODO: Calculate the number of lines by splitting `listOfHosts` by the comma operator
-        int lines = 0;
-        try {
-            String hostsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/hostInfo.txt";
-            BufferedReader reader = new BufferedReader(new FileReader(hostsFilePath));
-            while (reader.readLine() != null) {
-                lines++;
-            }
-            reader.close();
-        } catch(java.io.IOException e) {
-            System.out.println(e.getStackTrace());
-        }
+        // Calculate the number of hosts currently accounted for
+        String[] hostInfo = listOfHosts.split(",");
+        int lines = hostInfo.length;
 
         // Mod the md5 hash with by the number of hosts in the distributed system
         hostID %= lines;
@@ -298,6 +381,10 @@ public class Server implements Runnable {
             IP_ADDRESS = InetAddress.getLocalHost().getHostAddress();
             System.out.println(IP_ADDRESS + " at port number: " + PORT_NUMBER);
 
+            // Add this host to a String managed by this Server Instance
+            listOfHosts += (HOSTNAME + " " + IP_ADDRESS + " " + PORT_NUMBER + ",");
+            add();
+
             // Create a new thread to accept Linda Terminal Commands
             lindaTerminal = new Thread(new Server());
             lindaTerminal.start();
@@ -305,15 +392,12 @@ public class Server implements Runnable {
             // Listen for new socket connections to from hosts that request it
             while (true) {
                 socket = serverSocket.accept();
-                System.out.println("\nA Connection has been established!");
 
                 // Read the input stream of messages from other hosts
                 BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                String output = br.readLine();
+                String dataStreamCommand = br.readLine();
+                parseDataStreamCommand(dataStreamCommand);
 
-                // Add the list of hosts
-                listOfHosts = output;
-                add();
                 socket.close();
             }
 

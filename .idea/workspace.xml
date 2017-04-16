@@ -2,6 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="f9c7e18d-ab95-4c47-9b42-9e388e3ccf58" name="Default" comment="">
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/Tuple.java" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/Server.java" afterPath="$PROJECT_DIR$/src/Server.java" />
     </list>
     <ignored path="$PROJECT_DIR$/out/" />
@@ -24,22 +26,23 @@
       <file leaf-file-name="Server.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/Server.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-176">
-              <caret line="61" column="47" lean-forward="false" selection-start-line="61" selection-start-column="47" selection-end-line="61" selection-end-column="47" />
+            <state relative-caret-position="336">
+              <caret line="127" column="31" lean-forward="false" selection-start-line="127" selection-start-column="31" selection-end-line="127" selection-end-column="31" />
               <folding>
                 <element signature="docComment;method#Server#0;class#Server#0" expanded="false" />
                 <element signature="docComment;method#add#0;class#Server#0" expanded="false" />
                 <element signature="method#add#0;class#Server#0" expanded="false" />
-                <element signature="docComment;method#allHostsAddEachother#0;class#Server#0" expanded="false" />
-                <element signature="method#allHostsAddEachother#0;class#Server#0" expanded="false" />
+                <element signature="docComment;method#allHostsAddEachOther#0;class#Server#0" expanded="false" />
+                <element signature="method#allHostsAddEachOther#0;class#Server#0" expanded="false" />
                 <element signature="docComment;method#in#0;class#Server#0" expanded="false" />
                 <element signature="docComment;method#rd#0;class#Server#0" expanded="false" />
                 <element signature="docComment;method#out#0;class#Server#0" expanded="false" />
                 <element signature="docComment;method#parseLindaCommand#0;class#Server#0" expanded="false" />
                 <element signature="method#parseLindaCommand#0;class#Server#0" expanded="false" />
+                <element signature="docComment;method#parseDataStreamCommand#0;class#Server#0" expanded="false" />
+                <element signature="method#parseDataStreamCommand#0;class#Server#0" expanded="false" />
                 <element signature="docComment;method#getHostID#0;class#Server#0" expanded="false" />
                 <element signature="method#getHostID#0;class#Server#0" expanded="false" />
-                <element signature="e#5649#5724#0" expanded="false" />
                 <element signature="docComment;method#hexToDecimal#0;class#Server#0" expanded="false" />
                 <element signature="method#hexToDecimal#0;class#Server#0" expanded="false" />
                 <element signature="docComment;method#hash#0;class#Server#0" expanded="false" />
@@ -48,8 +51,25 @@
                 <element signature="method#run#0;class#Server#0" expanded="false" />
                 <element signature="docComment;method#main#0;class#Server#0" expanded="false" />
                 <element signature="method#main#0;class#Server#0" expanded="false" />
-                <element signature="e#10161#10182#0" expanded="false" />
-                <element signature="e#10366#10452#0" expanded="false" />
+                <element signature="e#13115#13136#0" expanded="false" />
+                <element signature="e#13320#13406#0" expanded="false" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Tuple.java" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/Tuple.java">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="840">
+              <caret line="40" column="27" lean-forward="true" selection-start-line="40" selection-start-column="27" selection-end-line="40" selection-end-column="27" />
+              <folding>
+                <element signature="e#753#754#0" expanded="true" />
+                <element signature="e#788#789#0" expanded="true" />
+                <element signature="e#836#837#0" expanded="true" />
+                <element signature="e#875#876#0" expanded="true" />
+                <element signature="e#927#928#0" expanded="true" />
+                <element signature="e#970#971#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -76,6 +96,12 @@
       <find>host</find>
       <find>A Connection</find>
       <find>os.</find>
+      <find>variableRequired</find>
+      <find>output</find>
+      <find>listOfHosts</find>
+      <find>allHostsAddEachother</find>
+      <find>|</find>
+      <find>Parsed Command:</find>
     </findStrings>
     <replaceStrings>
       <replace>MD5H</replace>
@@ -84,6 +110,10 @@
       <replace>s</replace>
       <replace>socket</replace>
       <replace>serverSocket</replace>
+      <replace>typeOfVariableNeeded</replace>
+      <replace>dataStreamCommand</replace>
+      <replace>allHostsAddEachOther</replace>
+      <replace>~</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
@@ -98,6 +128,7 @@
     <option name="CHANGED_PATHS">
       <list>
         <option value="$PROJECT_DIR$/src/Client.java" />
+        <option value="$PROJECT_DIR$/src/Tuple.java" />
         <option value="$PROJECT_DIR$/src/Server.java" />
       </list>
     </option>
@@ -109,8 +140,8 @@
     <sorting>DEFINITION_ORDER</sorting>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="-1920" />
-    <option name="y" value="-479" />
+    <option name="x" value="-335" />
+    <option name="y" value="-1057" />
     <option name="width" value="1920" />
     <option name="height" value="1057" />
   </component>
@@ -610,12 +641,12 @@
       <workItem from="1491591356743" duration="20309000" />
       <workItem from="1492038111964" duration="20000" />
       <workItem from="1492038253405" duration="11367000" />
-      <workItem from="1492140392046" duration="17832000" />
+      <workItem from="1492140392046" duration="30792000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="49528000" />
+    <option name="totallyTimeSpent" value="62488000" />
   </component>
   <component name="TodoView">
     <todo-panel id="selected-file">
@@ -629,7 +660,7 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="-1920" y="-479" width="1920" height="1057" extended-state="6" />
+    <frame x="-335" y="-1057" width="1920" height="1057" extended-state="6" />
     <editor active="true" />
     <layout>
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
@@ -646,7 +677,7 @@
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Capture Tool" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Designer" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.060702875" sideWeight="0.49234137" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.10330138" sideWeight="0.49234137" order="0" side_tool="false" content_ui="combo" />
       <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3299595" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -694,16 +725,17 @@
             <element signature="docComment;method#Server#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#add#0;class#Server#0" expanded="false" />
             <element signature="method#add#0;class#Server#0" expanded="false" />
-            <element signature="docComment;method#allHostsAddEachother#0;class#Server#0" expanded="false" />
-            <element signature="method#allHostsAddEachother#0;class#Server#0" expanded="false" />
+            <element signature="docComment;method#allHostsAddEachOther#0;class#Server#0" expanded="false" />
+            <element signature="method#allHostsAddEachOther#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#in#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#rd#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#out#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#parseLindaCommand#0;class#Server#0" expanded="false" />
             <element signature="method#parseLindaCommand#0;class#Server#0" expanded="false" />
+            <element signature="docComment;method#parseDataStreamCommand#0;class#Server#0" expanded="false" />
+            <element signature="method#parseDataStreamCommand#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#getHostID#0;class#Server#0" expanded="false" />
             <element signature="method#getHostID#0;class#Server#0" expanded="false" />
-            <element signature="e#5649#5724#0" expanded="false" />
             <element signature="docComment;method#hexToDecimal#0;class#Server#0" expanded="false" />
             <element signature="method#hexToDecimal#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#hash#0;class#Server#0" expanded="false" />
@@ -712,8 +744,8 @@
             <element signature="method#run#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#main#0;class#Server#0" expanded="false" />
             <element signature="method#main#0;class#Server#0" expanded="false" />
-            <element signature="e#10161#10182#0" expanded="false" />
-            <element signature="e#10366#10452#0" expanded="false" />
+            <element signature="e#13115#13136#0" expanded="false" />
+            <element signature="e#13320#13406#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -734,16 +766,17 @@
             <element signature="docComment;method#Server#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#add#0;class#Server#0" expanded="false" />
             <element signature="method#add#0;class#Server#0" expanded="false" />
-            <element signature="docComment;method#allHostsAddEachother#0;class#Server#0" expanded="false" />
-            <element signature="method#allHostsAddEachother#0;class#Server#0" expanded="false" />
+            <element signature="docComment;method#allHostsAddEachOther#0;class#Server#0" expanded="false" />
+            <element signature="method#allHostsAddEachOther#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#in#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#rd#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#out#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#parseLindaCommand#0;class#Server#0" expanded="false" />
             <element signature="method#parseLindaCommand#0;class#Server#0" expanded="false" />
+            <element signature="docComment;method#parseDataStreamCommand#0;class#Server#0" expanded="false" />
+            <element signature="method#parseDataStreamCommand#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#getHostID#0;class#Server#0" expanded="false" />
             <element signature="method#getHostID#0;class#Server#0" expanded="false" />
-            <element signature="e#5649#5724#0" expanded="false" />
             <element signature="docComment;method#hexToDecimal#0;class#Server#0" expanded="false" />
             <element signature="method#hexToDecimal#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#hash#0;class#Server#0" expanded="false" />
@@ -752,8 +785,8 @@
             <element signature="method#run#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#main#0;class#Server#0" expanded="false" />
             <element signature="method#main#0;class#Server#0" expanded="false" />
-            <element signature="e#10161#10182#0" expanded="false" />
-            <element signature="e#10366#10452#0" expanded="false" />
+            <element signature="e#13115#13136#0" expanded="false" />
+            <element signature="e#13320#13406#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -774,16 +807,17 @@
             <element signature="docComment;method#Server#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#add#0;class#Server#0" expanded="false" />
             <element signature="method#add#0;class#Server#0" expanded="false" />
-            <element signature="docComment;method#allHostsAddEachother#0;class#Server#0" expanded="false" />
-            <element signature="method#allHostsAddEachother#0;class#Server#0" expanded="false" />
+            <element signature="docComment;method#allHostsAddEachOther#0;class#Server#0" expanded="false" />
+            <element signature="method#allHostsAddEachOther#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#in#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#rd#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#out#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#parseLindaCommand#0;class#Server#0" expanded="false" />
             <element signature="method#parseLindaCommand#0;class#Server#0" expanded="false" />
+            <element signature="docComment;method#parseDataStreamCommand#0;class#Server#0" expanded="false" />
+            <element signature="method#parseDataStreamCommand#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#getHostID#0;class#Server#0" expanded="false" />
             <element signature="method#getHostID#0;class#Server#0" expanded="false" />
-            <element signature="e#5649#5724#0" expanded="false" />
             <element signature="docComment;method#hexToDecimal#0;class#Server#0" expanded="false" />
             <element signature="method#hexToDecimal#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#hash#0;class#Server#0" expanded="false" />
@@ -792,8 +826,8 @@
             <element signature="method#run#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#main#0;class#Server#0" expanded="false" />
             <element signature="method#main#0;class#Server#0" expanded="false" />
-            <element signature="e#10161#10182#0" expanded="false" />
-            <element signature="e#10366#10452#0" expanded="false" />
+            <element signature="e#13115#13136#0" expanded="false" />
+            <element signature="e#13320#13406#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -821,24 +855,40 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/src/Tuple.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="840">
+          <caret line="40" column="27" lean-forward="true" selection-start-line="40" selection-start-column="27" selection-end-line="40" selection-end-column="27" />
+          <folding>
+            <element signature="e#753#754#0" expanded="true" />
+            <element signature="e#788#789#0" expanded="true" />
+            <element signature="e#836#837#0" expanded="true" />
+            <element signature="e#875#876#0" expanded="true" />
+            <element signature="e#927#928#0" expanded="true" />
+            <element signature="e#970#971#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/src/Server.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-176">
-          <caret line="61" column="47" lean-forward="false" selection-start-line="61" selection-start-column="47" selection-end-line="61" selection-end-column="47" />
+        <state relative-caret-position="336">
+          <caret line="127" column="31" lean-forward="false" selection-start-line="127" selection-start-column="31" selection-end-line="127" selection-end-column="31" />
           <folding>
             <element signature="docComment;method#Server#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#add#0;class#Server#0" expanded="false" />
             <element signature="method#add#0;class#Server#0" expanded="false" />
-            <element signature="docComment;method#allHostsAddEachother#0;class#Server#0" expanded="false" />
-            <element signature="method#allHostsAddEachother#0;class#Server#0" expanded="false" />
+            <element signature="docComment;method#allHostsAddEachOther#0;class#Server#0" expanded="false" />
+            <element signature="method#allHostsAddEachOther#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#in#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#rd#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#out#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#parseLindaCommand#0;class#Server#0" expanded="false" />
             <element signature="method#parseLindaCommand#0;class#Server#0" expanded="false" />
+            <element signature="docComment;method#parseDataStreamCommand#0;class#Server#0" expanded="false" />
+            <element signature="method#parseDataStreamCommand#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#getHostID#0;class#Server#0" expanded="false" />
             <element signature="method#getHostID#0;class#Server#0" expanded="false" />
-            <element signature="e#5649#5724#0" expanded="false" />
             <element signature="docComment;method#hexToDecimal#0;class#Server#0" expanded="false" />
             <element signature="method#hexToDecimal#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#hash#0;class#Server#0" expanded="false" />
@@ -847,8 +897,8 @@
             <element signature="method#run#0;class#Server#0" expanded="false" />
             <element signature="docComment;method#main#0;class#Server#0" expanded="false" />
             <element signature="method#main#0;class#Server#0" expanded="false" />
-            <element signature="e#10161#10182#0" expanded="false" />
-            <element signature="e#10366#10452#0" expanded="false" />
+            <element signature="e#13115#13136#0" expanded="false" />
+            <element signature="e#13320#13406#0" expanded="false" />
           </folding>
         </state>
       </provider>
