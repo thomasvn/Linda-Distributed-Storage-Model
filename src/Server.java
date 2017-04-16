@@ -2,13 +2,11 @@ import java.io.*;
 import java.math.BigInteger;
 import java.net.*;
 import java.nio.file.Files;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.*;
 import java.security.MessageDigest;
-import javax.xml.bind.DatatypeConverter;
+import java.security.NoSuchAlgorithmException;
 
 
 public class Server implements Runnable {
@@ -58,17 +56,38 @@ public class Server implements Runnable {
 
 
     /**
-     * Makes sure that all hosts in the network have the same `hostInfo.txt` file in the nets directory
+     * Makes sure that all hosts in the network have the same `hostInfo.txt` file in the nets directory. This method
+     * would only be called by the "master" host
      */
-    private static void addAllHosts() {
+    private static void allHostsAddEachother() {
+        String ipAddr;
+        int portNum;
+
         // Split `listOfHosts` by the commas
+        String[] hostInfo = listOfHosts.split(",");
 
-        // Split `listOfHosts[]` by the spaces to Host Names, IP Addresses, Ports
-            // Open a socket, send a string of the hostview.txt,
-            // Handle the method in the `run()` method and call `add()` again
+        // Send the string `listOfHosts` to all hosts in the network
+        for (int i = 0; i < hostInfo.length; i++) {
+            // Split `hostInfo[]` by the spaces to Host Names, IP Addresses, Ports
+            String[] specificHostInfo = hostInfo[i].split(" ");
+            ipAddr = specificHostInfo[1];
+            portNum = Integer.parseInt(specificHostInfo[2]);
+
+            try {
+                Socket s = new Socket();
+                s.connect(new InetSocketAddress(ipAddr, portNum));
+
+                // Sending the string `listOfHosts` to specific host
+                OutputStream os = s.getOutputStream();
+                os.write(listOfHosts.getBytes());
+                os.close();
+
+                s.close();
+            } catch(IOException e) {
+                System.out.println(e.getStackTrace());
+            }
+        }
     }
-
-    // Create a method to connect to other servers and add other machines to that server
 
 
     /**
@@ -96,7 +115,7 @@ public class Server implements Runnable {
      *
      * @param rawCommand
      */
-    private static void parseUserCommand(String rawCommand) {
+    private static void parseLindaCommand(String rawCommand) {
         // Remove all spaces
         rawCommand = rawCommand.replace(" ","");
 
@@ -119,9 +138,8 @@ public class Server implements Runnable {
                     // Add this host to a String managed by this Server Instance
                     listOfHosts += (tokenizedCommand[0] + " " + tokenizedCommand[1] + " " + tokenizedCommand[2] + ",");
                 }
-                System.out.println(listOfHosts);
                 add();
-                addAllHosts();
+                allHostsAddEachother();
             }
 
             // "in" command was inputted in Linda
@@ -242,7 +260,7 @@ public class Server implements Runnable {
             } else if (commandLine.equals("exit")) {
                 break;
             } else {
-                parseUserCommand(commandLine);
+                parseLindaCommand(commandLine);
             }
         }
     }
@@ -253,10 +271,8 @@ public class Server implements Runnable {
      * @param args
      */
     public static void main(String [] args) {
-        ServerSocket host;
-        Socket clientSocket;
-        DataInputStream input;
-        DataOutputStream output;
+        ServerSocket serverSocket;
+        Socket socket;
         Thread lindaTerminal;
 
         try {
@@ -271,7 +287,7 @@ public class Server implements Runnable {
             while(true) {
                 PORT_NUMBER = ThreadLocalRandom.current().nextInt(1024, 65535 + 1);
                 try {
-                    host = new ServerSocket(PORT_NUMBER);
+                    serverSocket = new ServerSocket(PORT_NUMBER);
                     break;
                 } catch(IOException e) {
                     continue;
@@ -288,9 +304,17 @@ public class Server implements Runnable {
 
             // Listen for new socket connections to from hosts that request it
             while (true) {
-                clientSocket = host.accept();
-                input = new DataInputStream(clientSocket.getInputStream());
+                socket = serverSocket.accept();
                 System.out.println("\nA Connection has been established!");
+
+                // Read the input stream of messages from other hosts
+                BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                String output = br.readLine();
+
+                // Add the list of hosts
+                listOfHosts = output;
+                add();
+                socket.close();
             }
 
             // Close the sockets?
@@ -302,11 +326,4 @@ public class Server implements Runnable {
 
     // TODO: /tmp/<login>, /tmp/<login>/linda, /tmp/<login>/linda/<name>/nets --> mode 777
     // TODO: nets and tuples --> mode 666
-
-
-//    // Connect with host
-//    Socket s = new Socket();
-//    s.connect(new InetSocketAddress(ipAddresses.get(i), ports.get(i)));
-//
-//    s.close();
 }
