@@ -2,7 +2,6 @@ import java.io.*;
 import java.math.BigInteger;
 import java.net.*;
 import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.*;
@@ -11,27 +10,18 @@ import java.security.NoSuchAlgorithmException;
 
 
 public class Server implements Runnable {
-    // TODO: MAKE GETTERS AND SETTERS
     private static String LOGIN = "tnguyen1";
     private static String HOSTNAME;
     private static String IP_ADDRESS;
     private static int PORT_NUMBER;
     private static String listOfHosts = "";
 
-    // TODO: HANDLE WRONG USER INPUT
-
-    /**
-     *
-     */
-    public Server() {}
-
-
 
 /************************************************ Linda Commands ******************************************************/
     /**
      * Appends all host names, ip addresses, and ports in the network to the file `hostInfo.txt`
      */
-    private static void add() {
+    private void add() {
         try {
             // Create necessary file paths for the host's tuple space
             String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/";
@@ -69,21 +59,59 @@ public class Server implements Runnable {
      *
      * @param hashedTuple
      */
-    private static void in(String hashedTuple) {}
+    private void in(String hashedTuple) {
 
-
-    /**
-     *
-     * @param hashedTuple
-     */
-    private static void rd(String hashedTuple) {}
+    }
 
 
     /**
      *
      * @param rawTuple
      */
-    private static void out(String rawTuple) {
+    private void rd(String rawTuple) {
+        String hostInfo = "";
+
+        try {
+            String hostsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/hostInfo.txt";
+            BufferedReader reader = new BufferedReader(new FileReader(hostsFilePath));
+
+            // Broadcast new tuple to all hosts in the network
+            while ((hostInfo = reader.readLine()) != null) {
+                // Parse information about the host
+                String[] specificHostInfo = hostInfo.split(" ");
+                String ipAddr = specificHostInfo[1];
+                int portNum = Integer.parseInt(specificHostInfo[2]);
+
+                // Create a socket connection to the correct host
+                Socket s = new Socket();
+                s.connect(new InetSocketAddress(ipAddr, portNum));
+
+                // Send a message in the datastream to write to the TupleSpace
+                OutputStream os = s.getOutputStream();
+                String outputMessage = "rd~" + rawTuple;
+                System.out.println("Output Message (Host " + getHostID(rawTuple) + "): " + outputMessage);
+                os.write(outputMessage.getBytes());
+                os.close();
+
+                s.close();
+            }
+
+            // TODO: BLOCK UNTIL IT RECEIVES AN ACK FOR THIS SPECIFIC TUPLE
+
+            reader.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    /**
+     *
+     * @param rawTuple
+     */
+    private void out(String rawTuple) {
         String hostInfo = null;
 
         // Instantiate the tuple object
@@ -122,7 +150,7 @@ public class Server implements Runnable {
             // Send a message in the datastream to write to the TupleSpace
             OutputStream os = s.getOutputStream();
             String outputMessage = "out~" + rawTuple;
-            System.out.println("Output Message (In " + getHostID(rawTuple) + "): " + outputMessage);
+            System.out.println("Output Message (Host " + getHostID(rawTuple) + "): " + outputMessage);
             os.write(outputMessage.getBytes());
             os.close();
 
@@ -137,14 +165,15 @@ public class Server implements Runnable {
 /************************************************** Parsing Input *****************************************************/
     /**
      *
-     * @param rawCommand
+     * @param command
      */
-    private static void parseLindaCommand(String rawCommand) {
+    private void parseLindaCommand(String command) {
+        // TODO: Watch out for removing spaces in strings
         // Remove all spaces
-        rawCommand = rawCommand.replace(" ","");
+        command = command.replace(" ","");
 
         // Match all regex provided in the pattern. This will group tokens by the "()" delimiters
-        Matcher parsedCommand = Pattern.compile("([^()]+)").matcher(rawCommand);
+        Matcher parsedCommand = Pattern.compile("([^()]+)").matcher(command);
 
         // Search through the parsed command
         if (parsedCommand.find()) {
@@ -154,7 +183,7 @@ public class Server implements Runnable {
                 // Place all host information in ArrayLists and add these hosts
                 while (parsedCommand.find()) {
                     // Split into array by using commas as delimiters
-                    String[] tokenizedCommand = rawCommand.substring(parsedCommand.start(), parsedCommand.end()).split(",");
+                    String[] tokenizedCommand = command.substring(parsedCommand.start(), parsedCommand.end()).split(",");
 
                     // Add this host to a String managed by this Server Instance
                     listOfHosts += (tokenizedCommand[0] + " " + tokenizedCommand[1] + " " + tokenizedCommand[2] + ",");
@@ -166,18 +195,20 @@ public class Server implements Runnable {
             // "out" command was inputted in Linda
             else if (parsedCommand.group(0).equalsIgnoreCase("out")) {
                 if (parsedCommand.find()) {
-                    out(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
+                    out(command.substring(parsedCommand.start(), parsedCommand.end()));
                 }
             }
 
             // "in" command was inputted in Linda
             else if (parsedCommand.group(0).equalsIgnoreCase("in")) {
-                System.out.println(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
+                System.out.println(command.substring(parsedCommand.start(), parsedCommand.end()));
             }
 
             // "rd" command was inputted in Linda
             else if (parsedCommand.group(0).equalsIgnoreCase("rd")) {
-                System.out.println(rawCommand.substring(parsedCommand.start(), parsedCommand.end()));
+                if (parsedCommand.find()) {
+                    rd(command.substring(parsedCommand.start(), parsedCommand.end()));
+                }
             }
 
         }
@@ -188,7 +219,7 @@ public class Server implements Runnable {
      *
      * @param command
      */
-    private static void parseDataStreamCommand(String command) {
+    private void parseDataStreamCommand(String command) {
         // Parse the DataStream Command
         String[] parsedCommand = command.split("~");
 
@@ -208,21 +239,24 @@ public class Server implements Runnable {
                 bw.flush();
                 bw.close();
 
-                System.out.print("Tuple has been added: (" + parsedCommand[1] + ")");
+                System.out.print("Tuple has been added to this host: (" + parsedCommand[1] + ")");
             } catch(IOException e) {
                 e.printStackTrace();
             }
+        } else if (parsedCommand[0].equals("rd")) {
+            System.out.println("RD this tuple: (" + parsedCommand[1] + ")");
+            // Need to send an ACK back if found in the Tuple Space
         }
     }
 
 
 
-/***************************************** Miscellaneous Helper Functions *********************************************/
+/******************************************* Miscellaneous Helper Methods *********************************************/
     /**
      * Makes sure that all hosts in the network have the same `hostInfo.txt` file in the nets directory. This method
      * would only be called by the "master" host
      */
-    private static void allHostsAddEachOther() {
+    private void allHostsAddEachOther() {
         String ipAddr;
         int portNum;
 
@@ -259,7 +293,7 @@ public class Server implements Runnable {
      * @param rawTuple
      * @return
      */
-    private static int getHostID(String rawTuple) {
+    private int getHostID(String rawTuple) {
         String hashedTuple = hash(rawTuple);
         int hostID = hexToDecimal(hashedTuple);
 
@@ -279,7 +313,7 @@ public class Server implements Runnable {
      * @param s
      * @return
      */
-    private static int hexToDecimal(String s) {
+    private int hexToDecimal(String s) {
         String digits = "0123456789ABCDEF";
         s = s.toUpperCase();
         int val = 0;
@@ -298,7 +332,7 @@ public class Server implements Runnable {
      * @param rawTuple
      * @return
      */
-    private static String hash(String rawTuple) {
+    private String hash(String rawTuple) {
         String md5Hash = null;
 
         // Remove extra delimiters in the raw tuple
@@ -320,8 +354,11 @@ public class Server implements Runnable {
     }
 
 
+
+/**************************************** Methods for Linda Thread & Socket Thread ************************************/
     /**
      * This method is messaged when creating a new thread for our Linda terminal.
+     * This method will be handling all Linda Terminal commands `add()` `out()` `in()` `rd()`
      */
     @Override
     public void run() {
@@ -345,10 +382,10 @@ public class Server implements Runnable {
 
 
     /**
-     *
+     * This method handles input from other servers.
      * @param args
      */
-    public static void main(String [] args) {
+    public void listener(String[] args) {
         ServerSocket serverSocket;
         Socket socket;
         Thread lindaTerminal;
@@ -408,6 +445,13 @@ public class Server implements Runnable {
         }
     }
 
-    // TODO: /tmp/<login>, /tmp/<login>/linda, /tmp/<login>/linda/<name>/nets --> mode 777
-    // TODO: nets and tuples --> mode 666
+
+    /**
+     *
+     * @param args
+     */
+    public static void main(String[] args) {
+        Server host = new Server();
+        host.listener(args);
+    }
 }
