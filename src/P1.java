@@ -10,7 +10,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 
-public class Server implements Runnable {
+public class P1 implements Runnable {
     private static String LOGIN = "tnguyen1";
     private static String HOSTNAME;
     private static String IP_ADDRESS;
@@ -60,61 +60,25 @@ public class Server implements Runnable {
 
 
     /**
-     *
+     * Broadcasts a request to all hosts to retrieve the rawTuple and delete it in its respective host
      * @param rawTuple
      */
     private void in(String rawTuple) {
-
+        request(rawTuple, "in");
     }
 
 
     /**
-     *
+     * Broadcasts a request to all hosts to retrieve the rawTuple
      * @param rawTuple
      */
     private void rd(String rawTuple) {
-        String hostInfo = "";
-
-        try {
-            String hostsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/hostInfo.txt";
-            BufferedReader reader = new BufferedReader(new FileReader(hostsFilePath));
-
-            // Broadcast new tuple to all hosts in the network
-            while ((hostInfo = reader.readLine()) != null) {
-                // Parse information about the host
-                String[] specificHostInfo = hostInfo.split(" ");
-                String ipAddr = specificHostInfo[1];
-                int portNum = Integer.parseInt(specificHostInfo[2]);
-
-                // Create a socket connection to the correct host
-                Socket s = new Socket();
-                s.connect(new InetSocketAddress(ipAddr, portNum));
-
-                // Send a message in the datastream to write to the TupleSpace
-                OutputStream os = s.getOutputStream();
-                String outputMessage = "rd~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER;
-                os.write(outputMessage.getBytes());
-                os.close();
-
-                s.close();
-            }
-            reader.close();
-
-            // Block Linda thread & wait for an ACKnowledgement
-            blocked = true;
-            tupleThatIsBlocking = rawTuple;
-            while (blocked) { }
-
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        request(rawTuple, "rd");
     }
 
 
     /**
-     *
+     * Places a tuple into the Tuple Space
      * @param rawTuple
      */
     private void out(String rawTuple) {
@@ -209,7 +173,9 @@ public class Server implements Runnable {
 
             // "in" command was inputted in Linda
             else if (parsedCommand.group(0).equalsIgnoreCase("in")) {
-                System.out.println(command.substring(parsedCommand.start(), parsedCommand.end()));
+                if (parsedCommand.find()) {
+                    in(command.substring(parsedCommand.start(), parsedCommand.end()));
+                }
             }
 
             // "rd" command was inputted in Linda
@@ -258,12 +224,12 @@ public class Server implements Runnable {
             }
         }
 
-        else if (parsedCommand[0].equals("rd")) {
+        else if (parsedCommand[0].equals("rd") || parsedCommand[0].equals("in")) {
             String rawStringTuple = parsedCommand[1];
             String requesterIPAddr = parsedCommand[2];
             int requesterPortNum = Integer.parseInt(parsedCommand[3]);
 
-            System.out.print("A host has requested to rd(" + rawStringTuple + ")");
+            System.out.print("A host has requested the tuple (" + rawStringTuple + ")");
 
             // Create a tuple object from the "rd" command
             Tuple tupleInSearch = new Tuple(rawStringTuple);
@@ -298,6 +264,33 @@ public class Server implements Runnable {
 
                             System.out.print("\nThe tuple (" + rawStringTuple + ") has been found in this host's Tuple Space. " +
                                     "An ACK has been sent back to the requester");
+
+                            if (parsedCommand[0].equals("in")) {
+                                File inputFile = new File(tupleSpaceFilePath);
+                                File tempFile = new File(tupleSpaceFilePath);
+
+                                reader = new BufferedReader(new FileReader(inputFile));
+                                BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile));
+
+                                String lineToRemove = rawStringTuple;
+                                String currentLine;
+
+                                while((currentLine = reader.readLine()) != null) {
+                                    // trim newline when comparing with lineToRemove
+                                    String trimmedLine = currentLine.trim();
+                                    if(trimmedLine.equals(lineToRemove)) continue;
+                                    writer.write(currentLine + System.getProperty("line.separator"));
+                                }
+                                writer.close();
+                                reader.close();
+//                                boolean success = tempFile.renameTo(inputFile);
+                                System.out.println();
+
+                                System.out.println("The tuple (" + rawStringTuple + ") has been deleted from the" +
+                                        "Tuple Space.");
+                            }
+
+                            break;
                         }
                     }
 
@@ -317,7 +310,7 @@ public class Server implements Runnable {
 
         else if (parsedCommand[0].equals("ACK") && parsedCommand[1].equals(tupleThatIsBlocking)) {
             // Should return ACK of "ACK~rawTuple~hostName" or "NACK~rawTuple~hostName"
-            System.out.print("FOUND! " + parsedCommand[2] + "maintains the tuple:(" + parsedCommand[1] + ")");
+            System.out.println("\nFOUND! " + parsedCommand[2] + " maintains the tuple:(" + parsedCommand[1] + ")");
             blocked = false;
             tupleThatIsBlocking = null;
         }
@@ -367,7 +360,58 @@ public class Server implements Runnable {
 
 
     /**
-     *
+     * Handles the `in()` and `rd()` Linda commands
+     * @param rawTuple
+     * @param requestType
+     */
+    private void request(String rawTuple, String requestType) {
+        String hostInfo = "";
+
+        try {
+            String hostsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/hostInfo.txt";
+            BufferedReader reader = new BufferedReader(new FileReader(hostsFilePath));
+
+            // Broadcast new tuple to all hosts in the network
+            while ((hostInfo = reader.readLine()) != null) {
+                // Parse information about the host
+                String[] specificHostInfo = hostInfo.split(" ");
+                String ipAddr = specificHostInfo[1];
+                int portNum = Integer.parseInt(specificHostInfo[2]);
+
+                // Create a socket connection to the correct host
+                Socket s = new Socket();
+                s.connect(new InetSocketAddress(ipAddr, portNum));
+
+                // Send a message in the datastream to write to the TupleSpace
+                OutputStream os = s.getOutputStream();
+                if (requestType.equals("rd")) {
+                    String outputMessage = "rd~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER;
+                    os.write(outputMessage.getBytes());
+                } else if (requestType.equals("in")) {
+                    String outputMessage = "in~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER;
+                    os.write(outputMessage.getBytes());
+                }
+                os.close();
+
+                s.close();
+            }
+            reader.close();
+
+            // Block Linda thread & wait for an ACKnowledgement
+            blocked = true;
+            tupleThatIsBlocking = rawTuple;
+            while (blocked) { }
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    /**
+     * Utilizes the MD5 Hash to retrieve the index of the host who should hold the parameter `rawTuple`
      * @param rawTuple
      * @return
      */
@@ -387,7 +431,7 @@ public class Server implements Runnable {
 
 
     /**
-     *
+     * Helper method to turn hex to decimal
      * @param s
      * @return
      */
@@ -460,7 +504,7 @@ public class Server implements Runnable {
 
 
     /**
-     * This method handles input from other servers.
+     * This method listens and handles any of the data streamed from other hosts
      * @param args
      */
     public void listener(String[] args) {
@@ -501,7 +545,7 @@ public class Server implements Runnable {
             add();
 
             // Create a new thread to accept Linda Terminal Commands
-            lindaTerminal = new Thread(new Server());
+            lindaTerminal = new Thread(new P1());
             lindaTerminal.start();
 
             // Listen for new socket connections to from hosts that request it
@@ -525,11 +569,11 @@ public class Server implements Runnable {
 
 
     /**
-     *
+     * The Driver Method
      * @param args
      */
     public static void main(String[] args) {
-        Server host = new Server();
+        P1 host = new P1();
         host.listener(args);
     }
 }
