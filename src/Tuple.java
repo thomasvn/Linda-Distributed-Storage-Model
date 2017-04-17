@@ -29,7 +29,7 @@ public class Tuple {
         }
     }
 
-    public int getSize() {
+    private int getSize() {
         return tuple.size();
     }
 

@@ -2,6 +2,7 @@ import java.io.*;
 import java.math.BigInteger;
 import java.net.*;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.*;
@@ -15,6 +16,9 @@ public class Server implements Runnable {
     private static String IP_ADDRESS;
     private static int PORT_NUMBER;
     private static String listOfHosts = "";
+    private static boolean blocked = false;
+    private static String tupleThatIsBlocking;
+    private static ArrayList<String> requestedTuples = new ArrayList<>();
 
 
 /************************************************ Linda Commands ******************************************************/
@@ -57,9 +61,9 @@ public class Server implements Runnable {
 
     /**
      *
-     * @param hashedTuple
+     * @param rawTuple
      */
-    private void in(String hashedTuple) {
+    private void in(String rawTuple) {
 
     }
 
@@ -88,17 +92,19 @@ public class Server implements Runnable {
 
                 // Send a message in the datastream to write to the TupleSpace
                 OutputStream os = s.getOutputStream();
-                String outputMessage = "rd~" + rawTuple;
-                System.out.println("Output Message (Host " + getHostID(rawTuple) + "): " + outputMessage);
+                String outputMessage = "rd~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER;
                 os.write(outputMessage.getBytes());
                 os.close();
 
                 s.close();
             }
-
-            // TODO: BLOCK UNTIL IT RECEIVES AN ACK FOR THIS SPECIFIC TUPLE
-
             reader.close();
+
+            // Block Linda thread & wait for an ACKnowledgement
+            blocked = true;
+            tupleThatIsBlocking = rawTuple;
+            while (blocked) { }
+
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
@@ -116,6 +122,7 @@ public class Server implements Runnable {
 
         // Instantiate the tuple object
         // TODO: Create a method to check if it is a valid tuple?
+        // TODO: Before adding to the queue, check to see if this tuple is equal to the tuples in our arraylist
         Tuple tuple = new Tuple(rawTuple);
 
         try {
@@ -164,7 +171,8 @@ public class Server implements Runnable {
 
 /************************************************** Parsing Input *****************************************************/
     /**
-     *
+     * This method is run on the Linda thread and determines which method to message based on the the user provided
+     * input on the command line
      * @param command
      */
     private void parseLindaCommand(String command) {
@@ -216,7 +224,8 @@ public class Server implements Runnable {
 
 
     /**
-     *
+     * This method is run on the Listener thread and determines which method to message based on the data that other
+     * hosts sent it
      * @param command
      */
     private void parseDataStreamCommand(String command) {
@@ -227,8 +236,12 @@ public class Server implements Runnable {
             listOfHosts = parsedCommand[1];
             add();
             System.out.print("A Connection has been established!");
-        } else if (parsedCommand[0].equals("out")) {
+        }
+
+        else if (parsedCommand[0].equals("out")) {
             try {
+                // TODO: Check to see if this tuple is in the tuple array
+
                 // Open a writer to the tuples file on this host
                 String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt";
                 BufferedWriter bw = new BufferedWriter(new FileWriter(tupleSpaceFilePath, true));
@@ -243,9 +256,74 @@ public class Server implements Runnable {
             } catch(IOException e) {
                 e.printStackTrace();
             }
-        } else if (parsedCommand[0].equals("rd")) {
-            System.out.println("RD this tuple: (" + parsedCommand[1] + ")");
-            // Need to send an ACK back if found in the Tuple Space
+        }
+
+        else if (parsedCommand[0].equals("rd")) {
+            String rawStringTuple = parsedCommand[1];
+            String requesterIPAddr = parsedCommand[2];
+            int requesterPortNum = Integer.parseInt(parsedCommand[3]);
+
+            System.out.print("A host has requested to rd(" + rawStringTuple + ")");
+
+            // Create a tuple object from the "rd" command
+            Tuple tupleInSearch = new Tuple(rawStringTuple);
+
+            // Check to see if this tuple is being maintained in this Tuple Space
+            try {
+                String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt";
+                File dir = new File(tupleSpaceFilePath);
+
+                if (Files.exists(dir.toPath())) {
+                    BufferedReader reader = new BufferedReader(new FileReader(tupleSpaceFilePath));
+
+                    // Iterate through all tuples to see if there is a match
+                    String stringTuple;
+                    Boolean found = false;
+                    while ((stringTuple = reader.readLine()) != null) {
+                        Tuple tupleInFile = new Tuple(stringTuple);
+
+                        if (tupleInSearch.equals(tupleInFile)) {
+                            found = true;
+
+                            Socket s = new Socket();
+                            s.connect(new InetSocketAddress(requesterIPAddr, requesterPortNum));
+
+                            // Sending the string `listOfHosts` to specific host
+                            OutputStream os = s.getOutputStream();
+                            String outputMessage = "ACK~" + rawStringTuple + "~" + HOSTNAME;
+                            os.write(outputMessage.getBytes());
+                            os.close();
+
+                            s.close();
+
+                            System.out.print("\nThe tuple (" + rawStringTuple + ") has been found in this host's Tuple Space. " +
+                                    "An ACK has been sent back to the requester");
+                        }
+                    }
+
+                    if (!found) {
+                        requestedTuples.add(rawStringTuple);
+                    }
+
+                    reader.close();
+                } else {
+                    // If not found, add to the queue of tuples that are currently in search
+                    requestedTuples.add(rawStringTuple);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        else if (parsedCommand[0].equals("ACK") && parsedCommand[1].equals(tupleThatIsBlocking)) {
+            // Should return ACK of "ACK~rawTuple~hostName" or "NACK~rawTuple~hostName"
+            System.out.print("FOUND! " + parsedCommand[2] + "maintains the tuple:(" + parsedCommand[1] + ")");
+            blocked = false;
+            tupleThatIsBlocking = null;
+        }
+
+        else if (parsedCommand[0].equals("ACK") && !parsedCommand[1].equals(tupleThatIsBlocking)) {
+            // TODO: WE ARE NO LONGER LOOKING FOR THIS TUPLE
         }
     }
 
