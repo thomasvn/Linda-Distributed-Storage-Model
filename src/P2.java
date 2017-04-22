@@ -20,6 +20,7 @@ public class P2 implements Runnable {
     private static boolean blocked = false;
     private static String tupleThatIsBlocking;
     private static ArrayList<String> requestedTuples = new ArrayList<>(); // TODO: Implement this
+    private static LookupTable lookupTable;
 
 
 /************************************************ Linda Commands ******************************************************/
@@ -43,6 +44,9 @@ public class P2 implements Runnable {
             dir = new File(hostsFilePath);
             Files.deleteIfExists(dir.toPath());
 
+            // Delete pre-existing lookup table to recreate it
+            lookupTable.clearTable();
+
             BufferedWriter bw = new BufferedWriter(new FileWriter(hostsFilePath, true));
 
             // Parse `listOfHosts` string and add to text file
@@ -52,11 +56,17 @@ public class P2 implements Runnable {
                 bw.write(hostInfo[i]);
                 bw.newLine();
                 bw.flush();
+
+                String[] parsedHostInfo = hostInfo[i].split(" ");
+                String hostName = parsedHostInfo[0];
+                System.out.println("ADD HOSTNAME: " + hostName);
+                lookupTable.addHost(hostName);
             }
+
+            System.out.println("ADD METHOD: \n" + lookupTable);
 
             bw.close();
 
-            // TODO: Update LookupTable
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -164,6 +174,8 @@ public class P2 implements Runnable {
                     listOfHosts += (tokenizedCommand[0] + " " + tokenizedCommand[1] + " " + tokenizedCommand[2] + ",");
                 }
                 add();
+
+                // Broadcast the updated "hostInfo.txt" and "lookupTable" to all other hosts
                 allHostsAddEachOther();
             }
 
@@ -202,9 +214,13 @@ public class P2 implements Runnable {
         String[] parsedCommand = command.split("~");
 
         if (parsedCommand[0].equals("add")) {
+            // Add Hosts
             listOfHosts = parsedCommand[1];
             add();
             System.out.print("A Connection has been established! ");
+
+            // Update Lookup Tables
+            lookupTable.updateLookupTable(parsedCommand[3]);
         }
 
         else if (parsedCommand[0].equals("out")) {
@@ -324,19 +340,28 @@ public class P2 implements Runnable {
             ipAddr = specificHostInfo[1];
             portNum = Integer.parseInt(specificHostInfo[2]);
 
-            try {
-                Socket s = new Socket();
-                s.connect(new InetSocketAddress(ipAddr, portNum));
+            if (ipAddr != IP_ADDRESS) {
+                try {
+                    Socket s = new Socket();
+                    s.connect(new InetSocketAddress(ipAddr, portNum));
 
-                // Sending the string `listOfHosts` to specific host
-                OutputStream os = s.getOutputStream();
-                String outputMessage = "add~" + listOfHosts;
-                os.write(outputMessage.getBytes());
-                os.close();
+                    // Preparing to send the host information to all individual hosts
+                    String hostInfoMessage = "add~" + listOfHosts;
 
-                s.close();
-            } catch(IOException e) {
-                e.printStackTrace();
+                    // Preparing to send the lookup table to all individual hosts
+                    String lookupTableMessage = "~lookupTable~";
+                    lookupTableMessage += lookupTable.toParseableString();
+
+                    // Sending the string `listOfHosts` and `lookupTableString` to all individual hosts
+                    OutputStream os = s.getOutputStream();
+                    os.write(hostInfoMessage.getBytes());
+                    os.write(lookupTableMessage.getBytes());
+                    os.close();
+
+                    s.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
@@ -578,17 +603,12 @@ public class P2 implements Runnable {
                 }
             }
 
+            // Instantiate the Lookup Table
+            lookupTable = new LookupTable();
+
             // Get & display IP of the current machine
             IP_ADDRESS = InetAddress.getLocalHost().getHostAddress();
             System.out.println(IP_ADDRESS + " at port number: " + PORT_NUMBER);
-
-            // TODO: Will need to check if we are allowed to replace on start up
-            // Replace old tuple space if it exists
-            String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/";
-            File dir = new File(tupleSpaceFilePath);
-            dir.mkdirs();
-            dir = new File(tupleSpaceFilePath += "tuples.txt");
-            Files.deleteIfExists(dir.toPath());
 
             // Add this host to the list of hosts in our network
             listOfHosts += (HOSTNAME + " " + IP_ADDRESS + " " + PORT_NUMBER + ",");
@@ -609,9 +629,6 @@ public class P2 implements Runnable {
 
                 socket.close();
             }
-
-            // Close the sockets?
-            // TODO: CHeck for when input stream is null. Once it is, then we close the socket
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -625,5 +642,17 @@ public class P2 implements Runnable {
     public static void main(String[] args) {
         P2 host = new P2();
         host.listener(args);
+
+        // TODO: Will need to check if we are allowed to replace on start up
+        // Replace old tuple space if it exists
+        try {
+            String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/";
+            File dir = new File(tupleSpaceFilePath);
+            dir.mkdirs();
+            dir = new File(tupleSpaceFilePath += "tuples.txt");
+            Files.deleteIfExists(dir.toPath());
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
     }
 }

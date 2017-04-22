@@ -163,6 +163,12 @@ public class LookupTable {
     }
 
 
+    public void clearTable() {
+        lookupTable_hosts.clear();
+        lookupTable_ranges.clear();
+    }
+
+
     /**
      * Writes the lookupTable to /tmp/LOGIN/linda/HOST/nets/lookupTable.txt using the current state of the lookup table
      * @param filePath
