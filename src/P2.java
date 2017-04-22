@@ -24,24 +24,25 @@ public class P2 implements Runnable {
 
 /************************************************ Linda Commands ******************************************************/
     /**
-     * Appends all host names, ip addresses, and ports in the network to the file `hostInfo.txt`
+     * Appends all host names, ip addresses, and ports in the network to the file `hostInfo.txt`.
+     *
+     * Updates our lookup table and tells all other nodes to update their lookup tables as well
+     *
+     * NOTE: the node that is being added will only join the network if a node that is currently in the network is
+     * adding it in
      */
     private void add() {
         try {
-            // Create necessary file paths for the host's tuple space
-            String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/";
-            File dir = new File(tupleSpaceFilePath);
-            dir.mkdirs();
-
             // Create necessary file paths for maintaining host information
             String hostsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/";
-            dir = new File(hostsFilePath);
+            File dir = new File(hostsFilePath);
             dir.mkdirs();
 
-            // Create files and buffered writers
+            // Delete pre-existing host information to reload new information
             hostsFilePath += "hostInfo.txt";
             dir = new File(hostsFilePath);
             Files.deleteIfExists(dir.toPath());
+
             BufferedWriter bw = new BufferedWriter(new FileWriter(hostsFilePath, true));
 
             // Parse `listOfHosts` string and add to text file
@@ -54,6 +55,8 @@ public class P2 implements Runnable {
             }
 
             bw.close();
+
+            // TODO: Update LookupTable
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -269,28 +272,7 @@ public class P2 implements Runnable {
 
                             // If the "in" command was invoked, we will delete the proper tuple
                             if (parsedCommand[0].equals("in")) {
-                                File inputFile = new File(tupleSpaceFilePath);
-                                File tempFile = new File("/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/temp.txt");
-
-                                reader = new BufferedReader(new FileReader(inputFile));
-                                BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile));
-
-                                String lineToRemove = rawStringTuple;
-                                String currentLine;
-
-                                while((currentLine = reader.readLine()) != null) {
-                                    // trim newline when comparing with lineToRemove
-                                    String trimmedLine = currentLine.trim();
-                                    if(trimmedLine.equals(lineToRemove)) continue;
-                                    writer.write(currentLine + System.getProperty("line.separator"));
-                                }
-                                writer.close();
-                                reader.close();
-                                boolean success = tempFile.renameTo(inputFile);
-                                System.out.println();
-
-                                System.out.println("The tuple (" + rawStringTuple + ") has been deleted from the " +
-                                        "Tuple Space. ");
+                                deleteLine(rawStringTuple);
                             }
 
                             break;
@@ -326,8 +308,7 @@ public class P2 implements Runnable {
 
 /******************************************* Miscellaneous Helper Methods *********************************************/
     /**
-     * Makes sure that all hosts in the network have the same `hostInfo.txt` file in the nets directory. This method
-     * would only be called by the "master" host
+     * Makes sure that all hosts in the network have the same `hostInfo.txt` file in the nets directory.
      */
     private void allHostsAddEachOther() {
         String ipAddr;
@@ -426,6 +407,10 @@ public class P2 implements Runnable {
         // Mod the md5 hash with by the number of hosts in the distributed system
         hostID %= lines;
 
+        // TODO: Get the size of the lookup Table and mod by the size
+
+        // TODO: Get the host which corresponds to this range value
+
         return hostID;
     }
 
@@ -456,6 +441,39 @@ public class P2 implements Runnable {
     private void unblockThread() {
         blocked = false;
         tupleThatIsBlocking = null;
+    }
+
+
+    /**
+     * Deletes a line from `tuples.txt` that corresponds to the String passed as a parameter
+     * @param tupleToDelete
+     */
+    private void deleteLine(String tupleToDelete) {
+        File inputFile = new File("/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt");
+        File tempFile = new File("/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/temp.txt");
+
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(inputFile));
+            BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile));
+
+            String lineToRemove = tupleToDelete;
+            String currentLine;
+
+            while ((currentLine = reader.readLine()) != null) {
+                // trim newline when comparing with lineToRemove
+                String trimmedLine = currentLine.trim();
+                if (trimmedLine.equals(lineToRemove)) continue;
+                writer.write(currentLine + System.getProperty("line.separator"));
+            }
+            writer.close();
+            reader.close();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        tempFile.renameTo(inputFile);
+        System.out.println("\nThe tuple (" + tupleToDelete + ") has been deleted from the " + "Tuple Space. ");
     }
 
 
@@ -564,9 +582,12 @@ public class P2 implements Runnable {
             IP_ADDRESS = InetAddress.getLocalHost().getHostAddress();
             System.out.println(IP_ADDRESS + " at port number: " + PORT_NUMBER);
 
-            // Remove old tuple space if it exists
-            String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt";
+            // TODO: Will need to check if we are allowed to replace on start up
+            // Replace old tuple space if it exists
+            String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/";
             File dir = new File(tupleSpaceFilePath);
+            dir.mkdirs();
+            dir = new File(tupleSpaceFilePath += "tuples.txt");
             Files.deleteIfExists(dir.toPath());
 
             // Add this host to the list of hosts in our network

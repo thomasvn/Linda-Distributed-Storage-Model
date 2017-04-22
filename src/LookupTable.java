@@ -1,3 +1,8 @@
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 
 /**
@@ -6,13 +11,13 @@ import java.util.ArrayList;
 public class LookupTable {
     private ArrayList<String> lookupTable_hosts;
     private ArrayList<ArrayList<Range>> lookupTable_ranges;
-    private int SIZE;
+    private int SIZE = 100;
 
-    public LookupTable (int size) {
-        this.SIZE = size;
+    public LookupTable () {
         lookupTable_hosts = new ArrayList<>();
         lookupTable_ranges = new ArrayList<>();
     }
+
 
     public void addHost(String hostName) {
         ArrayList<Range> hostRange = new ArrayList<>();
@@ -42,6 +47,7 @@ public class LookupTable {
         lookupTable_ranges.add(hostRange);
         lookupTable_hosts.add(hostName);
     }
+
 
     public void removeHost(String hostName) {
         int numRemainingHosts = lookupTable_hosts.size() - 1;
@@ -80,7 +86,117 @@ public class LookupTable {
         }
     }
 
-    // TODO: Save the look up file to disk (pass the file path)
+
+    /**
+     * Given a range number, it returns which host utilizes that range number.
+     * This method will only be messaged in `P2.java` inside the method `getHostID()`
+     * @param rangeNum
+     * @return
+     */
+    public String findHost(int rangeNum) {
+        int indexOfHost = 0;
+        for (int i = 0; i < lookupTable_ranges.size(); i++) {
+            ArrayList<Range> hostRanges = lookupTable_ranges.get(i);
+            for (Range r: hostRanges) {
+                if (r.withinRange(rangeNum)) {
+                    indexOfHost = i;
+                }
+            }
+        }
+        return lookupTable_hosts.get(indexOfHost);
+    }
+
+
+    /**
+     * @return Format: "h1:0,26;~h2:50,76;~h3:34,46;84,96;~h4:26,34;76,84;46,50;96,100;42,46;92,96;"
+     */
+    public String toParseableString() {
+        String result = "";
+
+        for (int i = 0; i < lookupTable_hosts.size(); i++) {
+            result += lookupTable_hosts.get(i) + ":";
+
+            ArrayList<Range> hostRanges = lookupTable_ranges.get(i);
+            for (Range r: hostRanges) {
+                result += r.getMin() + "," + r.getMax() + ";";
+            }
+
+            result += "~";
+        }
+
+        return result;
+    }
+
+
+    /**
+     * Update the current state of this object's lookup table based on the parseable string that was passed ins
+     * @param parseableLookupTable Format: "h1:0,26;~h2:50,76;~h3:34,46;84,96;~h4:26,34;76,84;46,50;96,100;42,46;92,96;"
+     */
+    public void updateLookupTable(String parseableLookupTable) {
+        // Delete the data in the current lookup table
+        lookupTable_hosts.clear();
+        lookupTable_ranges.clear();
+
+        // Organize by each individual host and its ranges
+        String[] hostsAndRanges = parseableLookupTable.split("~");
+
+        // Update the lookup table based on each of these hosts' information
+        for(String s: hostsAndRanges) {
+            String[] hostAndRanges = s.split(":");
+            String hostName = hostAndRanges[0];
+            String hostRanges = hostAndRanges[1];
+
+            lookupTable_hosts.add(hostName);
+
+            // Iterate through the ranges and add them to the lookup table
+            ArrayList<Range> newRanges = new ArrayList<>();
+            String[] ranges = hostRanges.split(";");
+            for (String r: ranges) {
+                String[] minAndMax = r.split(",");
+                int min = Integer.parseInt(minAndMax[0]);
+                int max = Integer.parseInt(minAndMax[1]);
+
+                newRanges.add(new Range(min, max));
+            }
+            lookupTable_ranges.add(newRanges);
+        }
+    }
+
+
+    /**
+     * Writes the lookupTable to /tmp/LOGIN/linda/HOST/nets/lookupTable.txt using the current state of the lookup table
+     * @param filePath
+     */
+    public void saveToFile(String filePath) {
+        // Create necessary file paths for the lookup table
+        File dir = new File(filePath);
+
+        try {
+            // Delete pre-existing host information to reload new information
+            Files.deleteIfExists(dir.toPath());
+
+            BufferedWriter bw = new BufferedWriter(new FileWriter(filePath, true));
+
+
+            for (int i = 0; i < lookupTable_hosts.size(); i++) {
+                bw.write(lookupTable_hosts.get(i) + ": ");
+
+                ArrayList<Range> hostRanges = lookupTable_ranges.get(i);
+                for (Range r: hostRanges) {
+                    bw.write("(" + r.getMin() + "," + r.getMax() + ")");
+                }
+
+                bw.newLine();
+                bw.flush();
+            }
+
+            bw.close();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     @Override
     public String toString() {
@@ -90,7 +206,7 @@ public class LookupTable {
 
             ArrayList<Range> singleHostRanges = lookupTable_ranges.get(i);
             for (Range r: singleHostRanges) {
-                lookupTable += ("Min: " + r.getMin() + " Max: " + r.getMax() + "  ");
+                lookupTable += ("(" + r.getMin() + ", " + r.getMax() + ")  ");
             }
 
             if (i != lookupTable_hosts.size() - 1) {
@@ -100,8 +216,9 @@ public class LookupTable {
         return lookupTable;
     }
 
+
     public static void main(String[] args) {
-        LookupTable lookupTable = new LookupTable(100);
+        LookupTable lookupTable = new LookupTable();
         lookupTable.addHost("h1");
         lookupTable.addHost("h2");
         lookupTable.addHost("h3");
@@ -109,6 +226,22 @@ public class LookupTable {
         System.out.println(lookupTable);
         System.out.println();
         lookupTable.removeHost("h3");
+        System.out.println(lookupTable);
+        System.out.println();
+
+        System.out.println("90 belongs to: " + lookupTable.findHost(90));
+        System.out.println("80 belongs to: " + lookupTable.findHost(80));
+        System.out.println("70 belongs to: " + lookupTable.findHost(70));
+        System.out.println("60 belongs to: " + lookupTable.findHost(60));
+        System.out.println("50 belongs to: " + lookupTable.findHost(50));
+
+//        String filePath = "/tmp/tnguyen1/linda/h1/nets/lookupTable.txt";
+//        lookupTable.saveToFile(filePath);
+
+        System.out.println();
+        String parseableString = lookupTable.toParseableString();
+        System.out.println(parseableString);
+        lookupTable.updateLookupTable(parseableString);
         System.out.println(lookupTable);
     }
 }

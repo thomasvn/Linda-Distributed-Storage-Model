@@ -10,6 +10,16 @@ public class Range {
         this.max = max;
     }
 
+    public Boolean withinRange(int num) {
+        if (num >= this.min && num <= this.getMax()) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+
     public int getMin() {
         return min;
     }
