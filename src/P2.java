@@ -10,7 +10,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 
-public class P1 implements Runnable {
+public class P2 implements Runnable {
     private static String LOGIN = "tnguyen1";
     private static String HOSTNAME;
     private static String IP_ADDRESS;
@@ -545,7 +545,7 @@ public class P1 implements Runnable {
             add();
 
             // Create a new thread to accept Linda Terminal Commands
-            lindaTerminal = new Thread(new P1());
+            lindaTerminal = new Thread(new P2());
             lindaTerminal.start();
 
             // Listen for new socket connections to from hosts that request it
@@ -573,7 +573,7 @@ public class P1 implements Runnable {
      * @param args
      */
     public static void main(String[] args) {
-        P1 host = new P1();
+        P2 host = new P2();
         host.listener(args);
     }
 }
