@@ -19,7 +19,6 @@ public class LookupTable {
 
         // Run this code block if the lookup table is currently empty
         if (lookupTable_hosts.isEmpty()) {
-            hostRange.clear();
             hostRange.add(new Range(0, this.SIZE));
             lookupTable_ranges.add(hostRange);
             lookupTable_hosts.add(hostName);
@@ -28,7 +27,6 @@ public class LookupTable {
 
         // Inspect all hosts currently available in the lookup table
         int numHosts = lookupTable_hosts.size();
-        hostRange.clear();
         for (int i = 0; i < numHosts; i++) {
             // Inspect each individual host's list of ranges
             ArrayList<Range> singleHostRanges = lookupTable_ranges.get(i);
@@ -45,7 +43,42 @@ public class LookupTable {
         lookupTable_hosts.add(hostName);
     }
 
-    public void removeHost() {}
+    public void removeHost(String hostName) {
+        int numRemainingHosts = lookupTable_hosts.size() - 1;
+        ArrayList<Range> redistributedRanges = new ArrayList<>();
+        ArrayList<Range> hostRange;
+
+        // Find index of host in the lookup table
+        int hostIndex = lookupTable_hosts.indexOf(hostName);
+        if (hostIndex == -1) {
+            System.out.println("Host was not found in the Lookup Table");
+        }
+
+        // Use this index to refer to the list of ranges
+        hostRange = lookupTable_ranges.get(hostIndex);
+
+        // Divide each of the ranges into "numHosts" number of sub-ranges
+        for (Range r: hostRange) {
+            int numIndicesNeeded = (r.getMax() - r.getMin()) / numRemainingHosts;
+            int min = r.getMin();
+            for (int i = 0; i < numRemainingHosts; i++) {
+                // Add all these sub-ranges to the `redistributedRanges` array
+                redistributedRanges.add(new Range(min, min + numIndicesNeeded));
+                min += numIndicesNeeded;
+            }
+        }
+
+        // Remove from both Arraylists which represent lookup table
+        lookupTable_hosts.remove(hostIndex);
+        lookupTable_ranges.remove(hostIndex);
+
+        // Assign these redistributed ranges to their respective hosts
+        for (int i = 0; i < redistributedRanges.size(); i++) {
+            ArrayList<Range> originalRange = lookupTable_ranges.get(i % lookupTable_hosts.size());
+            originalRange.add(redistributedRanges.get(i));
+            lookupTable_ranges.set(i % lookupTable_hosts.size(), originalRange);
+        }
+    }
 
     @Override
     public String toString() {
@@ -71,6 +104,9 @@ public class LookupTable {
         lookupTable.addHost("h2");
         lookupTable.addHost("h3");
         lookupTable.addHost("h4");
+        System.out.println(lookupTable);
+        System.out.println();
+        lookupTable.removeHost("h3");
         System.out.println(lookupTable);
     }
 }
