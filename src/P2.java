@@ -59,11 +59,11 @@ public class P2 implements Runnable {
 
                 String[] parsedHostInfo = hostInfo[i].split(" ");
                 String hostName = parsedHostInfo[0];
-                System.out.println("ADD HOSTNAME: " + hostName);
                 lookupTable.addHost(hostName);
             }
 
             System.out.println("ADD METHOD: \n" + lookupTable);
+            lookupTable.saveToFile("/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/lookupTable.txt");
 
             bw.close();
 
@@ -145,6 +145,13 @@ public class P2 implements Runnable {
     }
 
 
+    /**
+     *
+     * @param rawTuple
+     */
+    private void delete(String rawTuple) {}
+
+
 
 /************************************************** Parsing Input *****************************************************/
     /**
@@ -200,6 +207,13 @@ public class P2 implements Runnable {
                 }
             }
 
+            // "delete" command was inputted in Linda
+            else if (parsedCommand.group(0).equalsIgnoreCase("delete")) {
+                if (parsedCommand.find()) {
+                    delete(command.substring(parsedCommand.start(), parsedCommand.end()));
+                }
+            }
+
         }
     }
 
@@ -219,8 +233,9 @@ public class P2 implements Runnable {
             add();
             System.out.print("A Connection has been established! ");
 
+            // TODO: LOOK INTO THIS WHEN WE START DOING THE DELETE FUNCTION
             // Update Lookup Tables
-            lookupTable.updateLookupTable(parsedCommand[3]);
+//            lookupTable.updateLookupTable(parsedCommand[3]);
         }
 
         else if (parsedCommand[0].equals("out")) {
@@ -425,16 +440,8 @@ public class P2 implements Runnable {
         String hashedTuple = hash(rawTuple);
         int hostID = hexToDecimal(hashedTuple);
 
-        // Calculate the number of hosts currently accounted for
-        String[] hostInfo = listOfHosts.split(",");
-        int lines = hostInfo.length;
-
-        // Mod the md5 hash with by the number of hosts in the distributed system
-        hostID %= lines;
-
-        // TODO: Get the size of the lookup Table and mod by the size
-
-        // TODO: Get the host which corresponds to this range value
+        hostID %= lookupTable.getSIZE();
+        hostID = lookupTable.findHost(hostID);
 
         return hostID;
     }

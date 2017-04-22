@@ -11,7 +11,7 @@ import java.util.ArrayList;
 public class LookupTable {
     private ArrayList<String> lookupTable_hosts;
     private ArrayList<ArrayList<Range>> lookupTable_ranges;
-    private int SIZE = 100;
+    private int SIZE = 100; // TODO: Change to 2^16
 
     public LookupTable () {
         lookupTable_hosts = new ArrayList<>();
@@ -93,7 +93,7 @@ public class LookupTable {
      * @param rangeNum
      * @return
      */
-    public String findHost(int rangeNum) {
+    public int findHost(int rangeNum) {
         int indexOfHost = 0;
         for (int i = 0; i < lookupTable_ranges.size(); i++) {
             ArrayList<Range> hostRanges = lookupTable_ranges.get(i);
@@ -103,7 +103,7 @@ public class LookupTable {
                 }
             }
         }
-        return lookupTable_hosts.get(indexOfHost);
+        return indexOfHost;
     }
 
 
@@ -163,6 +163,9 @@ public class LookupTable {
     }
 
 
+    /**
+     *
+     */
     public void clearTable() {
         lookupTable_hosts.clear();
         lookupTable_ranges.clear();
@@ -201,6 +204,11 @@ public class LookupTable {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+
+    public int getSIZE() {
+        return this.SIZE;
     }
 
 
