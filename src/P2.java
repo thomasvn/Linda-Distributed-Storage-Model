@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -18,7 +19,7 @@ public class P2 implements Runnable {
     private static String listOfHosts = "";
     private static boolean blocked = false;
     private static String tupleThatIsBlocking;
-    private static ArrayList<String> requestedTuples = new ArrayList<>();
+    private static ArrayList<String> requestedTuples = new ArrayList<>(); // TODO: Implement this
 
 
 /************************************************ Linda Commands ******************************************************/
@@ -121,7 +122,6 @@ public class P2 implements Runnable {
             // Send a message in the datastream to write to the TupleSpace
             OutputStream os = s.getOutputStream();
             String outputMessage = "out~" + rawTuple;
-            System.out.println("Output Message (Host " + getHostID(rawTuple) + "): " + outputMessage);
             os.write(outputMessage.getBytes());
             os.close();
 
@@ -201,10 +201,12 @@ public class P2 implements Runnable {
         if (parsedCommand[0].equals("add")) {
             listOfHosts = parsedCommand[1];
             add();
-            System.out.print("A Connection has been established!");
+            System.out.print("A Connection has been established! ");
         }
 
         else if (parsedCommand[0].equals("out")) {
+            String rawStringTuple = parsedCommand[1];
+
             try {
                 // TODO: Check to see if this tuple is in the tuple array
 
@@ -213,12 +215,12 @@ public class P2 implements Runnable {
                 BufferedWriter bw = new BufferedWriter(new FileWriter(tupleSpaceFilePath, true));
 
                 // Write the tuple into the host's file
-                bw.write(parsedCommand[1]);
+                bw.write(rawStringTuple);
                 bw.newLine();
                 bw.flush();
                 bw.close();
 
-                System.out.print("Tuple has been added to this host: (" + parsedCommand[1] + ")");
+                System.out.print("Tuple has been added to this host: (" + rawStringTuple + ") ");
             } catch(IOException e) {
                 e.printStackTrace();
             }
@@ -229,12 +231,12 @@ public class P2 implements Runnable {
             String requesterIPAddr = parsedCommand[2];
             int requesterPortNum = Integer.parseInt(parsedCommand[3]);
 
-            System.out.print("A host has requested the tuple (" + rawStringTuple + ")");
+            System.out.print("A host has requested the tuple (" + rawStringTuple + ") ");
 
             // Create a tuple object from the "rd" command
             Tuple tupleInSearch = new Tuple(rawStringTuple);
 
-            // Check to see if this tuple is being maintained in this Tuple Space
+            // Check to see if the tuple in search is being maintained in this Tuple Space
             try {
                 String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt";
                 File dir = new File(tupleSpaceFilePath);
@@ -262,12 +264,13 @@ public class P2 implements Runnable {
 
                             s.close();
 
-                            System.out.print("\nThe tuple (" + rawStringTuple + ") has been found in this host's Tuple Space. " +
-                                    "An ACK has been sent back to the requester");
+                            System.out.print("\nThe tuple (" + rawStringTuple + ") has been found in this host's " +
+                                    "Tuple Space. " + "An ACK has been sent back to the requester. ");
 
+                            // If the "in" command was invoked, we will delete the proper tuple
                             if (parsedCommand[0].equals("in")) {
                                 File inputFile = new File(tupleSpaceFilePath);
-                                File tempFile = new File(tupleSpaceFilePath);
+                                File tempFile = new File("/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/temp.txt");
 
                                 reader = new BufferedReader(new FileReader(inputFile));
                                 BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile));
@@ -283,11 +286,11 @@ public class P2 implements Runnable {
                                 }
                                 writer.close();
                                 reader.close();
-//                                boolean success = tempFile.renameTo(inputFile);
+                                boolean success = tempFile.renameTo(inputFile);
                                 System.out.println();
 
-                                System.out.println("The tuple (" + rawStringTuple + ") has been deleted from the" +
-                                        "Tuple Space.");
+                                System.out.println("The tuple (" + rawStringTuple + ") has been deleted from the " +
+                                        "Tuple Space. ");
                             }
 
                             break;
@@ -309,10 +312,9 @@ public class P2 implements Runnable {
         }
 
         else if (parsedCommand[0].equals("ACK") && parsedCommand[1].equals(tupleThatIsBlocking)) {
-            // Should return ACK of "ACK~rawTuple~hostName" or "NACK~rawTuple~hostName"
-            System.out.println("\nFOUND! " + parsedCommand[2] + " maintains the tuple:(" + parsedCommand[1] + ")");
-            blocked = false;
-            tupleThatIsBlocking = null;
+            // Should return ACK of "ACK~rawTuple~hostName"
+            System.out.println("\nACK Received! " + parsedCommand[2] + " maintains the tuple:(" + parsedCommand[1] + ")");
+            unblockThread();
         }
 
         else if (parsedCommand[0].equals("ACK") && !parsedCommand[1].equals(tupleThatIsBlocking)) {
@@ -373,7 +375,7 @@ public class P2 implements Runnable {
 
             // Broadcast new tuple to all hosts in the network
             while ((hostInfo = reader.readLine()) != null) {
-                // Parse information about the host
+                // Parse information from `nets` file about each host
                 String[] specificHostInfo = hostInfo.split(" ");
                 String ipAddr = specificHostInfo[1];
                 int portNum = Integer.parseInt(specificHostInfo[2]);
@@ -398,9 +400,7 @@ public class P2 implements Runnable {
             reader.close();
 
             // Block Linda thread & wait for an ACKnowledgement
-            blocked = true;
-            tupleThatIsBlocking = rawTuple;
-            while (blocked) { }
+            blockThread(rawTuple);
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -427,6 +427,35 @@ public class P2 implements Runnable {
         hostID %= lines;
 
         return hostID;
+    }
+
+
+    /**
+     * Blocks the current thread that it is called un
+     * @param rawTuple
+     */
+    private void blockThread(String rawTuple) {
+        blocked = true;
+        tupleThatIsBlocking = rawTuple;
+        while (true) {
+            try {
+                TimeUnit.SECONDS.sleep(2);
+            } catch (Exception e) {
+                continue;
+            }
+            if (!blocked) {
+                break;
+            }
+        }
+    }
+
+
+    /**
+     * Unblocks the thread that it is currently called on
+     */
+    private void unblockThread() {
+        blocked = false;
+        tupleThatIsBlocking = null;
     }
 
 
