@@ -1,4 +1,5 @@
 import java.io.*;
+import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.net.*;
 import java.nio.file.Files;
@@ -146,10 +147,80 @@ public class P2 implements Runnable {
 
 
     /**
-     *
-     * @param rawTuple
+     * Removes the host from our `hostInfo.txt` file on disk, and also our lookup table
+     * @param hostNames
      */
-    private void delete(String rawTuple) {}
+    private void delete(String hostNames) {
+        String hostsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/hostInfo.txt";
+        String tempFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/temp.txt";
+        ArrayList<String> hostsToRemove_ipAddr = new ArrayList<>();
+        ArrayList<String> hostsToRemove_portNum = new ArrayList<>();
+
+        // Search for the correct host name in nets file
+        hostNames.replace(" ", "");
+        String[] hostsToRemove = hostNames.split(",");
+
+        for (String s: hostsToRemove) {
+            // Update our locally kept list of hosts
+            listOfHosts = "";
+
+            try {
+                BufferedReader reader = new BufferedReader(new FileReader(hostsFilePath));
+
+                // Search for host information given the host name
+                String hostInfo = reader.readLine();
+                while (hostInfo != null) {
+                    // When we find the line the host name is on, delete that line in `hostInfo.txt`
+                    if (hostInfo.contains(s)) {
+                        String lineToRemove = hostInfo;
+                        deleteLine(lineToRemove, hostsFilePath, tempFilePath);
+
+                        // Add info on the hosts we want to remove concerning their IP and Port number
+                        String specificHostInfo[] = hostInfo.split(" ");
+                        hostsToRemove_ipAddr.add(specificHostInfo[1]);
+                        hostsToRemove_portNum.add(specificHostInfo[2]);
+                    } else {
+                        listOfHosts += hostInfo + ",";
+                    }
+                    hostInfo = reader.readLine();
+                }
+
+                // Removes the host from the lookup table
+                lookupTable.removeHost(s);
+                lookupTable.saveToFile("/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/lookupTable.txt");
+
+                // Broadcast to all other nodes in the net to update their network info and lookup table info
+                broadcastUpdateNetsAndLookup();
+
+                reader.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // Send a message to all nodes who need to be deleted
+        for (int i = 0; i < hostsToRemove_ipAddr.size(); i++) {
+            try {
+                Socket s = new Socket();
+                s.connect(new InetSocketAddress(hostsToRemove_ipAddr.get(i),
+                        Integer.parseInt(hostsToRemove_portNum.get(i))));
+
+                // Preparing to send necessary information to hosts that need to be deleted
+                String deleteMessage = "delete~" + listOfHosts + "~" + lookupTable.toParseableString();
+
+                // Sending the string `listOfHosts` and `lookupTableString` to all individual hosts
+                OutputStream os = s.getOutputStream();
+                os.write(deleteMessage.getBytes());
+                os.close();
+
+                s.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // TODO: Need to clear `hostInfo.txt` and `lookupTable.txt` and `tuples.txt` on the host we're deleting
+    }
 
 
 
@@ -183,7 +254,7 @@ public class P2 implements Runnable {
                 add();
 
                 // Broadcast the updated "hostInfo.txt" and "lookupTable" to all other hosts
-                allHostsAddEachOther();
+                broadcastUpdateNetsAndLookup();
             }
 
             // "out" command was inputted in Linda
@@ -303,7 +374,11 @@ public class P2 implements Runnable {
 
                             // If the "in" command was invoked, we will delete the proper tuple
                             if (parsedCommand[0].equals("in")) {
-                                deleteLine(rawStringTuple);
+                                String inputFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt";
+                                String tempFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/temp.txt";
+                                deleteLine(rawStringTuple, inputFilePath, tempFilePath);
+                                System.out.println("\nThe tuple (" + rawStringTuple + ") has been deleted from the "
+                                        + "Tuple Space. ");
                             }
 
                             break;
@@ -324,6 +399,32 @@ public class P2 implements Runnable {
             }
         }
 
+        else if (parsedCommand[0].equals("delete")) {
+            // Should return command of "delete~listofhosts~parseableStringLookupTable"
+            String tuplesFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt";
+
+            // Update the `hostInfo.txt` file and lookup table
+            listOfHosts = parsedCommand[1];
+            add();
+            lookupTable.updateLookupTable(parsedCommand[2]);
+
+            try {
+                BufferedReader reader = new BufferedReader(new FileReader(tuplesFilePath));
+
+                // Go through file of tuples and redistribute them to their respective nodes
+                String tuple = reader.readLine();
+                while (tuple != null) {
+                    out(tuple);
+                    tuple = reader.readLine();
+                }
+
+                reader.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
+
         else if (parsedCommand[0].equals("ACK") && parsedCommand[1].equals(tupleThatIsBlocking)) {
             // Should return ACK of "ACK~rawTuple~hostName"
             System.out.println("\nACK Received! " + parsedCommand[2] + " maintains the tuple:(" + parsedCommand[1] + ")");
@@ -341,7 +442,7 @@ public class P2 implements Runnable {
     /**
      * Makes sure that all hosts in the network have the same `hostInfo.txt` file in the nets directory.
      */
-    private void allHostsAddEachOther() {
+    private void broadcastUpdateNetsAndLookup() {
         String ipAddr;
         int portNum;
 
@@ -478,17 +579,16 @@ public class P2 implements Runnable {
 
     /**
      * Deletes a line from `tuples.txt` that corresponds to the String passed as a parameter
-     * @param tupleToDelete
+     * @param lineToRemove
      */
-    private void deleteLine(String tupleToDelete) {
-        File inputFile = new File("/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt");
-        File tempFile = new File("/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/temp.txt");
+    private void deleteLine(String lineToRemove, String inputFilePath, String tempFilePath) {
+        File inputFile = new File(inputFilePath);
+        File tempFile = new File(tempFilePath);
 
         try {
             BufferedReader reader = new BufferedReader(new FileReader(inputFile));
             BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile));
 
-            String lineToRemove = tupleToDelete;
             String currentLine;
 
             while ((currentLine = reader.readLine()) != null) {
@@ -505,7 +605,6 @@ public class P2 implements Runnable {
         }
 
         tempFile.renameTo(inputFile);
-        System.out.println("\nThe tuple (" + tupleToDelete + ") has been deleted from the " + "Tuple Space. ");
     }
 
 

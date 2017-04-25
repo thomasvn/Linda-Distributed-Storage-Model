@@ -108,7 +108,7 @@ public class LookupTable {
 
 
     /**
-     * @return Format: "h1:0,26;~h2:50,76;~h3:34,46;84,96;~h4:26,34;76,84;46,50;96,100;42,46;92,96;"
+     * @return Format: "h1:0,26;`h2:50,76;`h3:34,46;84,96;`h4:26,34;76,84;46,50;96,100;42,46;92,96;"
      */
     public String toParseableString() {
         String result = "";
@@ -121,7 +121,7 @@ public class LookupTable {
                 result += r.getMin() + "," + r.getMax() + ";";
             }
 
-            result += "~";
+            result += "`";
         }
 
         return result;
@@ -130,7 +130,7 @@ public class LookupTable {
 
     /**
      * Update the current state of this object's lookup table based on the parseable string that was passed ins
-     * @param parseableLookupTable Format: "h1:0,26;~h2:50,76;~h3:34,46;84,96;~h4:26,34;76,84;46,50;96,100;42,46;92,96;"
+     * @param parseableLookupTable Format: "h1:0,26;`h2:50,76;`h3:34,46;84,96;`h4:26,34;76,84;46,50;96,100;42,46;92,96;"
      */
     public void updateLookupTable(String parseableLookupTable) {
         // Delete the data in the current lookup table
@@ -138,7 +138,7 @@ public class LookupTable {
         lookupTable_ranges.clear();
 
         // Organize by each individual host and its ranges
-        String[] hostsAndRanges = parseableLookupTable.split("~");
+        String[] hostsAndRanges = parseableLookupTable.split("`");
 
         // Update the lookup table based on each of these hosts' information
         for(String s: hostsAndRanges) {
