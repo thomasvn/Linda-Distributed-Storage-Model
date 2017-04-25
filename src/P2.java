@@ -697,6 +697,19 @@ public class P2 implements Runnable {
             return;
         }
 
+        // TODO: Will need to check if we are allowed to replace on start up
+        // Replace old tuple space if it exists
+        try {
+            String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/";
+            File dir = new File(tupleSpaceFilePath);
+            Boolean success = dir.mkdirs();
+            tupleSpaceFilePath += "tuples.txt";
+            dir = new File(tupleSpaceFilePath);
+            Files.deleteIfExists(dir.toPath());
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
+
         try {
             // Create a TCP server socket on a random available port
             while(true) {
@@ -748,17 +761,5 @@ public class P2 implements Runnable {
     public static void main(String[] args) {
         P2 host = new P2();
         host.listener(args);
-
-        // TODO: Will need to check if we are allowed to replace on start up
-        // Replace old tuple space if it exists
-        try {
-            String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/";
-            File dir = new File(tupleSpaceFilePath);
-            dir.mkdirs();
-            dir = new File(tupleSpaceFilePath += "tuples.txt");
-            Files.deleteIfExists(dir.toPath());
-        } catch(IOException e) {
-            e.printStackTrace();
-        }
     }
 }
