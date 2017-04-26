@@ -284,7 +284,6 @@ public class P2 implements Runnable {
                     delete(command.substring(parsedCommand.start(), parsedCommand.end()));
                 }
             }
-
         }
     }
 
@@ -302,11 +301,6 @@ public class P2 implements Runnable {
             // Add Hosts
             listOfHosts = parsedCommand[1];
             add();
-            System.out.print("A Connection has been established! ");
-
-            // TODO: LOOK INTO THIS WHEN WE START DOING THE DELETE FUNCTION
-            // Update Lookup Tables
-//            lookupTable.updateLookupTable(parsedCommand[3]);
         }
 
         else if (parsedCommand[0].equals("out")) {
@@ -326,6 +320,9 @@ public class P2 implements Runnable {
                 bw.close();
 
                 System.out.print("Tuple has been added to this host: (" + rawStringTuple + ") ");
+
+                // Back up the new tuples that have been added to this host
+                backUpTuples();
             } catch(IOException e) {
                 e.printStackTrace();
             }
@@ -437,6 +434,14 @@ public class P2 implements Runnable {
 
         }
 
+        else if (parsedCommand[0].equals("backup")) {
+            // Should return command of "backup~parseableTupleSpaceString"
+            System.out.println("BACKUP DATASTREAM SENT HERE");
+            if (parsedCommand.length == 2) {
+                parseTupleSpaceString(parsedCommand[1]);
+            }
+        }
+
         else if (parsedCommand[0].equals("ACK") && parsedCommand[1].equals(tupleThatIsBlocking)) {
             // Should return ACK of "ACK~rawTuple~hostName"
             System.out.println("\nACK Received! " + parsedCommand[2] + " maintains the tuple:(" + parsedCommand[1] + ")");
@@ -545,6 +550,73 @@ public class P2 implements Runnable {
 
 
     /**
+     *
+     */
+    private void backUpTuples() {
+        String backupHost = getBackupHostInfo();
+        String backupHostInfo[] = backupHost.split(" ");
+        String backupIpAddr = backupHostInfo[1];
+        String backupPortNum = backupHostInfo[2];
+
+        // Send our tuples to the respective backup host
+        try {
+            // Create a socket connection to the correct host
+            Socket s = new Socket();
+            s.connect(new InetSocketAddress(backupIpAddr, Integer.parseInt(backupPortNum)));
+
+            // Send a message in the datastream to write to the TupleSpace
+            OutputStream os = s.getOutputStream();
+            String parseableTupleString = tupleSpaceToParseableString();
+            String outputMessage = "backup~" + parseableTupleString;
+            os.write(outputMessage.getBytes());
+            os.close();
+
+            s.close();
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    /**
+     * Returns the information of this current node's backup node. Each node's backup node is the node that is listed
+     * after this one in the `hostInfo.txt` file.
+     * @return
+     */
+    private String getBackupHostInfo() {
+        String hostInfo = "";
+        String firstHostInfo;
+
+        try {
+            // Retrieve the information of the correct host
+            String hostInfoFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/hostInfo.txt";
+            BufferedReader reader = new BufferedReader(new FileReader(hostInfoFilePath));
+
+            // Goes to the line in the text file of the correct host
+            hostInfo = reader.readLine();
+            firstHostInfo = hostInfo;
+            while (hostInfo != null) {
+                if (hostInfo.contains(HOSTNAME)) {
+                    hostInfo = reader.readLine();
+                    if (hostInfo != null) {
+                        return hostInfo;
+                    } else {
+                        return firstHostInfo;
+                    }
+                }
+                hostInfo = reader.readLine();
+            }
+
+            reader.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return hostInfo;
+    }
+
+
+    /**
      * Utilizes the MD5 Hash to retrieve the index of the host who should hold the parameter `rawTuple`
      * @param rawTuple
      * @return
@@ -557,6 +629,62 @@ public class P2 implements Runnable {
         hostID = lookupTable.findHost(hostID);
 
         return hostID;
+    }
+
+
+    /**
+     *
+     * @return List of tuples all separated by the ` delimiter
+     */
+    private String tupleSpaceToParseableString() {
+        String result = "";
+
+        try {
+            // Retrieve the information of the correct host
+            String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt";
+            BufferedReader reader = new BufferedReader(new FileReader(tupleSpaceFilePath));
+
+            // Goes to the line in the text file of the correct host
+            String tuple = reader.readLine();
+            while (tuple != null) {
+                result += (tuple + "`");
+                tuple = reader.readLine();
+            }
+
+            reader.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return result;
+    }
+
+
+    /**
+     * Parses the input of tuples and saves it to the backupTuples.txt file
+     * @param parseableString
+     */
+    private void parseTupleSpaceString(String parseableString) {
+        String tuplesArray[] = parseableString.split("`");
+
+        try {
+            // Open a writer to the tuples file on this host
+            String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/backupTuples.txt";
+            BufferedWriter bw = new BufferedWriter(new FileWriter(tupleSpaceFilePath, true));
+
+            for (int i = 0; i < tuplesArray.length; i++) {
+                bw.write(tuplesArray[i]);
+                bw.newLine();
+                bw.flush();
+            }
+
+            bw.close();
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
+
+        // Parse the string, and place into the tuple space
+        System.out.println("The Tuple Space " + parseableString + " was passed to parseTupleSpaceString()!!");
     }
 
 
@@ -632,11 +760,6 @@ public class P2 implements Runnable {
             }
         }
         file.delete();
-    }
-
-
-    private void getBackupHostInfo() {
-        String hostInfoFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/hostInfo.txt";
     }
 
 
@@ -729,15 +852,25 @@ public class P2 implements Runnable {
             return;
         }
 
-        // TODO: Will need to check if we are allowed to replace on start up
-        // Replace old tuple space if it exists
+        // Check to see if this host is recovering from previously crashing
+        String netsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/";
+        File directory = new File(netsFilePath);
+        if (directory.exists()) {
+            System.out.println("CALL METHOD updateFromBackup()");
+            // updateFromBackup()
+        }
+
+
+        // Create a new tuple space
         try {
             String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/";
             File dir = new File(tupleSpaceFilePath);
-            Boolean success = dir.mkdirs();
-            tupleSpaceFilePath += "tuples.txt";
+            dir.mkdirs();
+
+            tupleSpaceFilePath+="tuples.txt";
             dir = new File(tupleSpaceFilePath);
-            Files.deleteIfExists(dir.toPath());
+            dir.delete();
+            dir.createNewFile();
         } catch(IOException e) {
             e.printStackTrace();
         }
