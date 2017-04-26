@@ -190,7 +190,9 @@ public class P2 implements Runnable {
                 lookupTable.saveToFile("/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/lookupTable.txt");
 
                 // Broadcast to all other nodes in the net to update their network info and lookup table info
-                broadcastUpdateNetsAndLookup();
+                if (!listOfHosts.equals("")) {
+                    broadcastUpdateNetsAndLookup();
+                }
 
                 reader.close();
             } catch (IOException e) {
@@ -218,8 +220,6 @@ public class P2 implements Runnable {
                 e.printStackTrace();
             }
         }
-
-        // TODO: Need to clear `hostInfo.txt` and `lookupTable.txt` and `tuples.txt` on the host we're deleting
     }
 
 
@@ -403,25 +403,37 @@ public class P2 implements Runnable {
             // Should return command of "delete~listofhosts~parseableStringLookupTable"
             String tuplesFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt";
 
-            // Update the `hostInfo.txt` file and lookup table
-            listOfHosts = parsedCommand[1];
-            add();
-            lookupTable.updateLookupTable(parsedCommand[2]);
+            // Redistribute the tuples as long as the delete command is not being called on the last node in the net
+            if (parsedCommand.length > 1) {
+                listOfHosts = parsedCommand[1];
+                add();
+                lookupTable.updateLookupTable(parsedCommand[2]);
 
-            try {
-                BufferedReader reader = new BufferedReader(new FileReader(tuplesFilePath));
+                try {
+                    BufferedReader reader = new BufferedReader(new FileReader(tuplesFilePath));
 
-                // Go through file of tuples and redistribute them to their respective nodes
-                String tuple = reader.readLine();
-                while (tuple != null) {
-                    out(tuple);
-                    tuple = reader.readLine();
+                    // Go through file of tuples and redistribute them to their respective nodes
+                    String tuple = reader.readLine();
+                    while (tuple != null) {
+                        out(tuple);
+                        tuple = reader.readLine();
+                    }
+
+                    reader.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-
-                reader.close();
-            } catch (IOException e) {
-                e.printStackTrace();
             }
+
+            // Remove everything in `/nets/` and `/tuples/` directories
+            String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/";
+            String hostInfoFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/";
+
+            File dir = new File(tupleSpaceFilePath);
+            deleteDir(dir);
+
+            dir = new File(hostInfoFilePath);
+            deleteDir(dir);
 
         }
 
@@ -605,6 +617,26 @@ public class P2 implements Runnable {
         }
 
         tempFile.renameTo(inputFile);
+    }
+
+
+    /**
+     *
+     * @param file
+     */
+    void deleteDir(File file) {
+        File[] contents = file.listFiles();
+        if (contents != null) {
+            for (File f : contents) {
+                deleteDir(f);
+            }
+        }
+        file.delete();
+    }
+
+
+    private void getBackupHostInfo() {
+        String hostInfoFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/hostInfo.txt";
     }
 
 

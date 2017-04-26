@@ -54,6 +54,13 @@ public class LookupTable {
         ArrayList<Range> redistributedRanges = new ArrayList<>();
         ArrayList<Range> hostRange;
 
+        // We are removing ourselves from the lookup table
+        if (numRemainingHosts == 0) {
+            lookupTable_hosts.clear();
+            lookupTable_ranges.clear();
+            return;
+        }
+
         // Find index of host in the lookup table
         int hostIndex = lookupTable_hosts.indexOf(hostName);
         if (hostIndex == -1) {
