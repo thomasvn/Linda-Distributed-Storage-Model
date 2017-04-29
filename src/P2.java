@@ -1,5 +1,4 @@
 import java.io.*;
-import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.net.*;
 import java.nio.file.Files;
@@ -253,10 +252,10 @@ public class P2 implements Runnable {
                     // Send a message in the datastream to write to the TupleSpace
                     OutputStream os = s.getOutputStream();
                     if (requestType.equals("rd")) {
-                        String outputMessage = "rd~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER;
+                        String outputMessage = "rd~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
                         os.write(outputMessage.getBytes());
                     } else if (requestType.equals("in")) {
-                        String outputMessage = "in~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER;
+                        String outputMessage = "in~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
                         os.write(outputMessage.getBytes());
                     }
                     os.close();
@@ -297,9 +296,15 @@ public class P2 implements Runnable {
 
             // Block Linda thread & wait for an ACKnowledgement
             blockThread(rawTuple);
+
         } catch (IOException e) {
-            System.out.println("HOST IS DOWN. MAKE BACKUP REQUEST");
-            backupRequest(rawTuple,requestType,hostName);
+            // Only search for the tuple in the backup host if there is no variable in the tuple
+            if (rawTuple.contains("?")) {
+                System.out.println(hostName + " was down when broadcasting to find tuple " + rawTuple);
+            } else {
+                System.out.println("HOST IS DOWN. MAKE BACKUP REQUEST");
+                backupRequest(rawTuple, requestType);
+            }
         }
     }
 
@@ -324,9 +329,47 @@ public class P2 implements Runnable {
      *
      * @param rawTuple
      * @param requestType
-     * @param crashedHostName
      */
-    private void backupRequest(String rawTuple, String requestType, String crashedHostName) {
+    private void backupRequest(String rawTuple, String requestType) {
+        String hostInfo = "";
+
+        try {
+            String hostsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/hostInfo.txt";
+            BufferedReader reader = new BufferedReader(new FileReader(hostsFilePath));
+
+            // Goes to the line in the text file of the backup host
+            int hostID = getHostID(rawTuple);
+            hostID++;
+            for (int i = 0; i < hostID; i++) {
+                reader.readLine();
+            }
+            hostInfo = reader.readLine();
+            reader.close();
+
+            // Parse information about the host
+            String[] specificHostInfo = hostInfo.split(" ");
+            String ipAddr = specificHostInfo[1];
+            int portNum = Integer.parseInt(specificHostInfo[2]);
+
+            // Create a socket connection to the correct host
+            Socket s = new Socket();
+            s.connect(new InetSocketAddress(ipAddr, portNum));
+
+            // Send a message in the datastream to write to the TupleSpace
+            OutputStream os = s.getOutputStream();
+            if (requestType.equals("rd")) {
+                String outputMessage = "rd~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~true";
+                os.write(outputMessage.getBytes());
+            } else if (requestType.equals("in")) {
+                String outputMessage = "in~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~true";
+                os.write(outputMessage.getBytes());
+            }
+            os.close();
+            s.close();
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
+
         // Get information of backup host
 
         // Send a request for the backup information
@@ -442,6 +485,7 @@ public class P2 implements Runnable {
             String rawStringTuple = parsedCommand[1];
             String requesterIPAddr = parsedCommand[2];
             int requesterPortNum = Integer.parseInt(parsedCommand[3]);
+            boolean requestingFromBackup = Boolean.valueOf(parsedCommand[4]);
 
             System.out.print("A host has requested the tuple (" + rawStringTuple + ") ");
 
@@ -450,8 +494,14 @@ public class P2 implements Runnable {
 
             // Check to see if the tuple in search is being maintained in this Tuple Space
             try {
-                String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt";
-                File dir = new File(tupleSpaceFilePath);
+                String tupleSpaceFilePath = "";
+                if (requestingFromBackup) {
+                    tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/backupTuples.txt";
+//                    File dir = new File(tupleSpaceFilePath);
+                } else {
+                    tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt";
+//                    File dir = new File(tupleSpaceFilePath);
+                }
 
                 BufferedReader reader = new BufferedReader(new FileReader(tupleSpaceFilePath));
 
@@ -472,9 +522,8 @@ public class P2 implements Runnable {
 
                         // If the "in" command was invoked, we will delete the proper tuple and update the backups
                         if (parsedCommand[0].equals("in")) {
-                            String inputFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt";
                             String tempFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/temp.txt";
-                            deleteLine(rawStringTuple, inputFilePath, tempFilePath);
+                            deleteLine(rawStringTuple, tupleSpaceFilePath, tempFilePath);
                             System.out.println("\nThe tuple (" + rawStringTuple + ") has been deleted from the "
                                     + "Tuple Space. ");
                             backUpTupleSpace();
