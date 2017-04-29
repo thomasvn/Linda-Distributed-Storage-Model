@@ -24,7 +24,7 @@ public class Tuple {
                 tupleType.add("variable");
             }
             else {
-                tupleType.add("integer");
+                tupleType.add("int");
             }
         }
     }
@@ -52,14 +52,14 @@ public class Tuple {
             if (tuple.getTupleTypeElement(i).equals("variable")) {
                 String variable = tuple.getTupleElement(i);
                 String[] parsedVariable = variable.split(":");
-                if (!this.getTupleElement(i).equals(parsedVariable[1])) {
+                if (!this.getTupleTypeElement(i).equals(parsedVariable[1])) {
                     return false;
                 }
             }
             else if(this.getTupleTypeElement(i).equals("variable")){
                 String variable = this.getTupleElement(i);
                 String[] parsedVariable = variable.split(":");
-                if (!tuple.getTupleElement(i).equals(parsedVariable[1])) {
+                if (!tuple.getTupleTypeElement(i).equals(parsedVariable[1])) {
                     return false;
                 }
             }
@@ -69,4 +69,12 @@ public class Tuple {
         }
         return true;
     }
+
+//    public static void main(String[] args) {
+//        Tuple tuple1 = new Tuple("?i:float");
+//        Tuple tuple2 = new Tuple("5.1");
+//
+//        boolean success = tuple1.equals(tuple2);
+//        System.out.println(success);
+//    }
 }

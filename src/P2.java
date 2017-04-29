@@ -283,10 +283,10 @@ public class P2 implements Runnable {
                 // Send a message in the datastream to write to the TupleSpace
                 OutputStream os = s.getOutputStream();
                 if (requestType.equals("rd")) {
-                    String outputMessage = "rd~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER;
+                    String outputMessage = "rd~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
                     os.write(outputMessage.getBytes());
                 } else if (requestType.equals("in")) {
-                    String outputMessage = "in~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER;
+                    String outputMessage = "in~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
                     os.write(outputMessage.getBytes());
                 }
                 os.close();
@@ -497,10 +497,8 @@ public class P2 implements Runnable {
                 String tupleSpaceFilePath = "";
                 if (requestingFromBackup) {
                     tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/backupTuples.txt";
-//                    File dir = new File(tupleSpaceFilePath);
                 } else {
                     tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt";
-//                    File dir = new File(tupleSpaceFilePath);
                 }
 
                 BufferedReader reader = new BufferedReader(new FileReader(tupleSpaceFilePath));
