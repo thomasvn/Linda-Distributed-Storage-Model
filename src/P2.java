@@ -245,21 +245,27 @@ public class P2 implements Runnable {
                     String ipAddr = specificHostInfo[1];
                     int portNum = Integer.parseInt(specificHostInfo[2]);
 
-                    // Create a socket connection to the correct host
-                    Socket s = new Socket();
-                    s.connect(new InetSocketAddress(ipAddr, portNum));
+                    try {
+                        // Create a socket connection to the correct host
+                        Socket s = new Socket();
+                        s.connect(new InetSocketAddress(ipAddr, portNum));
 
-                    // Send a message in the datastream to write to the TupleSpace
-                    OutputStream os = s.getOutputStream();
-                    if (requestType.equals("rd")) {
-                        String outputMessage = "rd~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
-                        os.write(outputMessage.getBytes());
-                    } else if (requestType.equals("in")) {
-                        String outputMessage = "in~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
-                        os.write(outputMessage.getBytes());
+                        // Send a message in the datastream to write to the TupleSpace
+                        OutputStream os = s.getOutputStream();
+                        if (requestType.equals("rd")) {
+                            String outputMessage = "rd~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
+                            os.write(outputMessage.getBytes());
+                        } else if (requestType.equals("in")) {
+                            String outputMessage = "in~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
+                            os.write(outputMessage.getBytes());
+                        }
+                        os.close();
+                        s.close();
+                    } catch (IOException e) {
+                        System.out.println(hostName + " was down when broadcasting to find tuple " + rawTuple);
+                        backupRequest(hostName, rawTuple, requestType);
+                        continue;
                     }
-                    os.close();
-                    s.close();
                 }
             } else {
                 // Goes to the line in the text file of the correct host
@@ -276,21 +282,26 @@ public class P2 implements Runnable {
                 String ipAddr = specificHostInfo[1];
                 int portNum = Integer.parseInt(specificHostInfo[2]);
 
-                // Create a socket connection to the correct host
-                Socket s = new Socket();
-                s.connect(new InetSocketAddress(ipAddr, portNum));
+                try {
+                    // Create a socket connection to the correct host
+                    Socket s = new Socket();
+                    s.connect(new InetSocketAddress(ipAddr, portNum));
 
-                // Send a message in the datastream to write to the TupleSpace
-                OutputStream os = s.getOutputStream();
-                if (requestType.equals("rd")) {
-                    String outputMessage = "rd~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
-                    os.write(outputMessage.getBytes());
-                } else if (requestType.equals("in")) {
-                    String outputMessage = "in~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
-                    os.write(outputMessage.getBytes());
+                    // Send a message in the datastream to write to the TupleSpace
+                    OutputStream os = s.getOutputStream();
+                    if (requestType.equals("rd")) {
+                        String outputMessage = "rd~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
+                        os.write(outputMessage.getBytes());
+                    } else if (requestType.equals("in")) {
+                        String outputMessage = "in~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
+                        os.write(outputMessage.getBytes());
+                    }
+                    os.close();
+                    s.close();
+                } catch (IOException e) {
+                    System.out.println("HOST IS DOWN. MAKE BACKUP REQUEST");
+                    backupRequest(hostName, rawTuple, requestType);
                 }
-                os.close();
-                s.close();
             }
             reader.close();
 
@@ -298,13 +309,7 @@ public class P2 implements Runnable {
             blockThread(rawTuple);
 
         } catch (IOException e) {
-            // Only search for the tuple in the backup host if there is no variable in the tuple
-            if (rawTuple.contains("?")) {
-                System.out.println(hostName + " was down when broadcasting to find tuple " + rawTuple);
-            } else {
-                System.out.println("HOST IS DOWN. MAKE BACKUP REQUEST");
-                backupRequest(rawTuple, requestType);
-            }
+            e.printStackTrace();
         }
     }
 
@@ -330,24 +335,12 @@ public class P2 implements Runnable {
      * @param rawTuple
      * @param requestType
      */
-    private void backupRequest(String rawTuple, String requestType) {
-        String hostInfo = "";
-
+    private void backupRequest(String crashedHostName, String rawTuple, String requestType) {
         try {
-            String hostsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/hostInfo.txt";
-            BufferedReader reader = new BufferedReader(new FileReader(hostsFilePath));
-
-            // Goes to the line in the text file of the backup host
-            int hostID = getHostID(rawTuple);
-            hostID++;
-            for (int i = 0; i < hostID; i++) {
-                reader.readLine();
-            }
-            hostInfo = reader.readLine();
-            reader.close();
+            String backupHostInfo = getBackupHostInfo(crashedHostName);
 
             // Parse information about the host
-            String[] specificHostInfo = hostInfo.split(" ");
+            String[] specificHostInfo = backupHostInfo.split(" ");
             String ipAddr = specificHostInfo[1];
             int portNum = Integer.parseInt(specificHostInfo[2]);
 
@@ -369,10 +362,6 @@ public class P2 implements Runnable {
         } catch(IOException e) {
             e.printStackTrace();
         }
-
-        // Get information of backup host
-
-        // Send a request for the backup information
     }
 
 
