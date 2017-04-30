@@ -1,15 +1,15 @@
 # The Linda Distributed Storage Model
 
-### Getting Started
+## Getting Started
 ***
 The Linda Distributed Storage Model creates a conceptual "global space" to store tuples across an infinite number of nodes.
 
 These instructions will help you deploy a single node in your environment. However, the repetiion of these steps provided will create a peer to peer network of nodes which can read and write tuples into this "global space".
 
-##### Prerequisites
+#### Prerequisites
 This peer to peer network functions purely on the Java Virtual Machine. Therefore, you will need the **Java Virtual Machine** and **Java Development Kit** to run this program.
 
-### Utilization
+## Utilization
 ***
 After cloning this repository to your local machine, you have two options of running this program:
 - Run it locally by opening mutliple command lines and consequently, multiple ports.
@@ -22,7 +22,7 @@ $ Java P2 <hostName>
 ```
 If you run this command on many different servers or command lines, you will open available ports to listen and wait for the Linda commands.
 
-##### Linda Commands
+#### Linda Commands
 **add**
 Add another host into the current network of hosts
 ```
@@ -56,7 +56,7 @@ linda> in ("abc", ?i:int)
 ```
 
 
-### Examples
+## Examples
 ***
 ```
 $ Java P2 host1

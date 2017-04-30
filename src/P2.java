@@ -574,40 +574,46 @@ public class P2 implements Runnable {
         else if (parsedCommand[0].equals("backup")) {
             // Should return command of "backup~parseableTupleSpaceString~append"
             if (parsedCommand.length == 3) {
-                saveTupleToBackup(parsedCommand[1], Boolean.valueOf(parsedCommand[2]));
+                saveTupleToDisk(parsedCommand[1], true, Boolean.valueOf(parsedCommand[2]));
             }
         }
 
         else if (parsedCommand[0].equals("restore")) {
-            // Should return command of "restore~requesterIpAddr~requesterPortNum"
-            String requesterIpAddr = parsedCommand[1];
-            int requesterPortNum = Integer.parseInt(parsedCommand[2]);
+            // Should return command of "restore~requesterHostName~requesterIpAddr~requesterPortNum"
+            String requesterHostName = parsedCommand[1];
+            String requesterIpAddr = parsedCommand[2];
+            int requesterPortNum = Integer.parseInt(parsedCommand[3]);
 
-            // TODO: Update nets file with the new requester Port Num
+            // Update the list of hosts to include the new port number of the requester
+            String newListofHosts = "";
+            String[] specificListofHosts = listOfHosts.split(",");
+
+            for (String hostInfo : specificListofHosts) {
+                if (hostInfo.contains(requesterHostName)) {
+                    String newHostInfo = requesterHostName + " " + requesterIpAddr + " " + requesterPortNum + ",";
+                    newListofHosts += newHostInfo;
+                } else {
+                    newListofHosts += hostInfo;
+                    newListofHosts += ",";
+                }
+            }
 
             // Send back the nets file, backuptuples.txt, and lookuptable
-            String restoreInfo = "restoreACK~" + listOfHosts + "~" + lookupTable.toParseableString() + "~"
+            String restoreInfo = "restoreACK~" + newListofHosts + "~" + lookupTable.toParseableString() + "~"
                     + tupleSpaceToParseableString(true);
-            System.out.println(restoreInfo);
             sendDatastreamMessage(requesterIpAddr, requesterPortNum, restoreInfo);
         }
 
         else if (parsedCommand[0].equals("restoreACK")) {
             // Should return command of "restoreACK~listOfHosts~lookupTableString~backupTuplesString"
-
-            // Update all information on host that is trying to restore
             listOfHosts = parsedCommand[1];
             lookupTable.updateLookupTable(parsedCommand[2]);
-            saveTupleToBackup(parsedCommand[3], false);
-
-            System.out.println("This works so far");
-
-            // Update listOfHosts to use new port number
-
-            unblockThread();
-
-
-            // Broadcast new nets file
+            if (parsedCommand.length == 4) {
+                System.out.println("It hit this");
+                saveTupleToDisk(parsedCommand[3], false, false);
+            }
+            add();
+            broadcastUpdateNetsAndLookup();
         }
 
         else if (parsedCommand[0].equals("ACK") && parsedCommand[1].equals(tupleThatIsBlocking)) {
@@ -688,12 +694,17 @@ public class P2 implements Runnable {
      * Parses the input of tuples and saves it to the backupTuples.txt file
      * @param parseableString Needs to be inputted a list of tuples separated by the ` delimiter
      */
-    private void saveTupleToBackup(String parseableString, Boolean append) {
+    private void saveTupleToDisk(String parseableString, Boolean saveToBackup, Boolean append) {
         String tuplesArray[] = parseableString.split("`");
+        String tupleSpaceFilePath = "";
 
         try {
             // Open a writer to the tuples file on this host
-            String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/backupTuples.txt";
+            if (saveToBackup) {
+                tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/backupTuples.txt";
+            } else {
+                tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt";
+            }
 
             // Delete existing backup
             if (!append) {
@@ -731,13 +742,9 @@ public class P2 implements Runnable {
         String backupHostIpAddr = specificBackupHostInfo[1];
         int backupHostPortNum = Integer.parseInt(specificBackupHostInfo[2]);
 
-        System.out.println(backupHostName + backupHostIpAddr + backupHostPortNum);
-
         // Send message to backup host to "Restore"
-        String message = "restore~" + IP_ADDRESS + "~" + PORT_NUMBER;
+        String message = "restore~" + HOSTNAME + "~" + IP_ADDRESS + "~" + PORT_NUMBER;
         sendDatastreamMessage(backupHostIpAddr,backupHostPortNum, message);
-
-        blockThread("restore");
 
         // Datastream Handler will receive info about nets file, lookup table, and tuple space. It will then broadcast
         // its new hostInfo.txt
