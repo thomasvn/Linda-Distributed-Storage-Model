@@ -262,7 +262,7 @@ public class P2 implements Runnable {
                         os.close();
                         s.close();
                     } catch (IOException e) {
-                        System.out.println(hostName + " was down when broadcasting to find tuple " + rawTuple);
+                        System.out.println(hostName + " was down when broadcasting to find tuple. Making backup request");
                         backupRequest(hostName, rawTuple, requestType);
                         continue;
                     }
@@ -299,7 +299,7 @@ public class P2 implements Runnable {
                     os.close();
                     s.close();
                 } catch (IOException e) {
-                    System.out.println("HOST IS DOWN. MAKE BACKUP REQUEST");
+                    System.out.println(hostName + " should have had the tuple, but has crashed. Making request to backup");
                     backupRequest(hostName, rawTuple, requestType);
                 }
             }
@@ -464,7 +464,7 @@ public class P2 implements Runnable {
                 System.out.print("Tuple has been added to this host: (" + rawStringTuple + ") ");
 
                 // Back up the new tuples that have been added to this host
-                backUpTupleSpace();
+                sendTupleSpaceToBackup();
             } catch(IOException e) {
                 e.printStackTrace();
             }
@@ -513,7 +513,7 @@ public class P2 implements Runnable {
                             deleteLine(rawStringTuple, tupleSpaceFilePath, tempFilePath);
                             System.out.println("\nThe tuple (" + rawStringTuple + ") has been deleted from the "
                                     + "Tuple Space. ");
-                            backUpTupleSpace();
+                            sendTupleSpaceToBackup();
                         }
 
                         break;
@@ -578,6 +578,38 @@ public class P2 implements Runnable {
             }
         }
 
+        else if (parsedCommand[0].equals("restore")) {
+            // Should return command of "restore~requesterIpAddr~requesterPortNum"
+            String requesterIpAddr = parsedCommand[1];
+            int requesterPortNum = Integer.parseInt(parsedCommand[2]);
+
+            // TODO: Update nets file with the new requester Port Num
+
+            // Send back the nets file, backuptuples.txt, and lookuptable
+            String restoreInfo = "restoreACK~" + listOfHosts + "~" + lookupTable.toParseableString() + "~"
+                    + tupleSpaceToParseableString(true);
+            System.out.println(restoreInfo);
+            sendDatastreamMessage(requesterIpAddr, requesterPortNum, restoreInfo);
+        }
+
+        else if (parsedCommand[0].equals("restoreACK")) {
+            // Should return command of "restoreACK~listOfHosts~lookupTableString~backupTuplesString"
+
+            // Update all information on host that is trying to restore
+            listOfHosts = parsedCommand[1];
+            lookupTable.updateLookupTable(parsedCommand[2]);
+            saveTupleToBackup(parsedCommand[3], false);
+
+            System.out.println("This works so far");
+
+            // Update listOfHosts to use new port number
+
+            unblockThread();
+
+
+            // Broadcast new nets file
+        }
+
         else if (parsedCommand[0].equals("ACK") && parsedCommand[1].equals(tupleThatIsBlocking)) {
             // Should return ACK of "ACK~rawTuple~hostName"
             System.out.println("\nACK Received! " + parsedCommand[2] + " maintains the tuple:(" + parsedCommand[1] + ")");
@@ -639,32 +671,16 @@ public class P2 implements Runnable {
     /**
      *
      */
-    private void backUpTupleSpace() {
+    private void sendTupleSpaceToBackup() {
         String backupHost = getBackupHostInfo(HOSTNAME);
         String backupHostInfo[] = backupHost.split(" ");
         String backupIpAddr = backupHostInfo[1];
         int backupPortNum = Integer.parseInt(backupHostInfo[2]);
 
-        String parseableTupleString = tupleSpaceToParseableString();
+        String parseableTupleString = tupleSpaceToParseableString(false);
         String outputMessage = "backup~" + parseableTupleString + "~false";
 
         sendDatastreamMessage(backupIpAddr, backupPortNum, outputMessage);
-
-//        // Send our tuples to the respective backup host
-//        try {
-//            // Create a socket connection to the correct host
-//            Socket s = new Socket();
-//            s.connect(new InetSocketAddress(backupIpAddr, backupPortNum));
-//
-//            // Send a message in the datastream to write to the TupleSpace
-//            OutputStream os = s.getOutputStream();
-//            os.write(outputMessage.getBytes());
-//            os.close();
-//
-//            s.close();
-//        } catch(IOException e) {
-//            e.printStackTrace();
-//        }
     }
 
 
@@ -708,20 +724,23 @@ public class P2 implements Runnable {
      *
      */
     private void restoreFromBackup() {
-        // TODO: Keep in mind that a host could have been added or deleted in the time that the host has crashed
-
-        // Send a message to the backup host to request information to restore
+        // TODO: This is assuming we do not add() or delete() a node while there is a host that has crashed
         String backupHostInfo = getBackupHostInfo(HOSTNAME);
         String specificBackupHostInfo[] = backupHostInfo.split(" ");
-        String specificBackupHostName = specificBackupHostInfo[0];
-        String specificBackupHostIpAddr = specificBackupHostInfo[1];
-        int specificBackupHostPortNum = Integer.parseInt(specificBackupHostInfo[2]);
+        String backupHostName = specificBackupHostInfo[0];
+        String backupHostIpAddr = specificBackupHostInfo[1];
+        int backupHostPortNum = Integer.parseInt(specificBackupHostInfo[2]);
 
-        // Send message to that host to "Restore"
+        System.out.println(backupHostName + backupHostIpAddr + backupHostPortNum);
 
-        // Receive information about the nets file, lookup table, and backupTuples.txt
+        // Send message to backup host to "Restore"
+        String message = "restore~" + IP_ADDRESS + "~" + PORT_NUMBER;
+        sendDatastreamMessage(backupHostIpAddr,backupHostPortNum, message);
 
-        // Override the current host's existing data
+        blockThread("restore");
+
+        // Datastream Handler will receive info about nets file, lookup table, and tuple space. It will then broadcast
+        // its new hostInfo.txt
     }
 
 
@@ -767,12 +786,18 @@ public class P2 implements Runnable {
      *
      * @return List of tuples all separated by the ` delimiter
      */
-    private String tupleSpaceToParseableString() {
+    private String tupleSpaceToParseableString(boolean fromBackup) {
         String result = "";
+        String tupleSpaceFilePath = "";
+
+        if (fromBackup) {
+            tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/backupTuples.txt";
+        } else {
+            tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt";
+        }
 
         try {
             // Retrieve the information of the correct host
-            String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt";
             BufferedReader reader = new BufferedReader(new FileReader(tupleSpaceFilePath));
 
             // Goes to the line in the text file of the correct host
@@ -995,15 +1020,6 @@ public class P2 implements Runnable {
             return;
         }
 
-        // Check to see if this host is recovering from previously crashing
-        String netsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/";
-        File directory = new File(netsFilePath);
-        if (directory.exists()) {
-            System.out.println("CALL METHOD updateFromBackup()");
-            restoreFromBackup();
-        }
-
-
         // Create a new tuple space
         try {
             String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/";
@@ -1036,6 +1052,14 @@ public class P2 implements Runnable {
             // Get & display IP of the current machine
             IP_ADDRESS = InetAddress.getLocalHost().getHostAddress();
             System.out.println(IP_ADDRESS + " at port number: " + PORT_NUMBER);
+
+            // Check to see if this host is recovering from previously crashing
+            String netsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/";
+            File directory = new File(netsFilePath);
+            if (directory.exists()) {
+                System.out.println("Restoring from backup");
+                restoreFromBackup();
+            }
 
             // Add this host to the list of hosts in our network
             listOfHosts += (HOSTNAME + " " + IP_ADDRESS + " " + PORT_NUMBER + ",");
