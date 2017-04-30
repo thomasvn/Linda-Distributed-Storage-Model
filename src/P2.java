@@ -22,10 +22,10 @@ public class P2 implements Runnable {
     private static ArrayList<String> requestedTuples = new ArrayList<>(); // TODO: Implement this
     private static LookupTable lookupTable;
 
-
-/************************************************ Linda Commands ******************************************************/
+//----------------------------------------------- Linda Commands -----------------------------------------------------//
     /**
-     * Appends all host names, ip addresses, and ports in the network to the file `hostInfo.txt`.
+     * Appends all host names, ip addresses, and ports in the network to the file hostInfo.txt. All information is
+     * updated from the local variable `listOfHosts`
      *
      * Updates our lookup table and tells all other nodes to update their lookup tables as well
      *
@@ -39,7 +39,7 @@ public class P2 implements Runnable {
             File dir = new File(hostsFilePath);
             dir.mkdirs();
 
-            // Delete pre-existing host information to reload new information
+            // Delete pre-existing host information to load new information
             hostsFilePath += "hostInfo.txt";
             dir = new File(hostsFilePath);
             Files.deleteIfExists(dir.toPath());
@@ -51,7 +51,6 @@ public class P2 implements Runnable {
 
             // Parse `listOfHosts` string and add to text file
             String[] hostInfo = listOfHosts.split(",");
-
             for (int i = 0; i < hostInfo.length; i++) {
                 bw.write(hostInfo[i]);
                 bw.newLine();
@@ -62,11 +61,9 @@ public class P2 implements Runnable {
                 lookupTable.addHost(hostName);
             }
 
-            System.out.println("ADD METHOD: \n" + lookupTable);
             lookupTable.saveToFile("/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/lookupTable.txt");
 
             bw.close();
-
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -174,6 +171,12 @@ public class P2 implements Runnable {
                         String lineToRemove = hostInfo;
                         deleteLine(lineToRemove, hostsFilePath, tempFilePath);
 
+                        try {
+                            TimeUnit.SECONDS.sleep(1);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+
                         // Add info on the hosts we want to remove concerning their IP and Port number
                         String specificHostInfo[] = hostInfo.split(" ");
                         hostsToRemove_ipAddr.add(specificHostInfo[1]);
@@ -199,6 +202,12 @@ public class P2 implements Runnable {
             }
         }
 
+        try {
+            TimeUnit.SECONDS.sleep(1);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
         // Send a message to all nodes who need to be deleted
         for (int i = 0; i < hostsToRemove_ipAddr.size(); i++) {
             try {
@@ -207,7 +216,8 @@ public class P2 implements Runnable {
                         Integer.parseInt(hostsToRemove_portNum.get(i))));
 
                 // Preparing to send necessary information to hosts that need to be deleted
-                String deleteMessage = "delete~" + listOfHosts + "~" + lookupTable.toParseableString();
+                System.out.println("DELETE: " + lookupTable);
+                String deleteMessage = "delete~" + listOfHosts + "~" + lookupTable.toParseableString() + "~" + HOSTNAME;
 
                 // Sending the string `listOfHosts` and `lookupTableString` to all individual hosts
                 OutputStream os = s.getOutputStream();
@@ -365,15 +375,13 @@ public class P2 implements Runnable {
     }
 
 
-
-/************************************************** Parsing Input *****************************************************/
+//------------------------------------------------ Parsing Input -----------------------------------------------------//
     /**
      * This method is run on the Linda thread and determines which method to message based on the the user provided
      * input on the command line
      * @param command
      */
     private void parseLindaCommand(String command) {
-        // TODO: Watch out for removing spaces in strings
         // Remove all spaces
         command = command.replace(" ","");
 
@@ -531,9 +539,6 @@ public class P2 implements Runnable {
         }
 
         else if (parsedCommand[0].equals("delete")) {
-            // TODO: Need to consider redistributing the backupTuples.txt file
-
-
             // Should return command of "delete~listofhosts~parseableStringLookupTable"
             String tuplesFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt";
 
@@ -541,6 +546,7 @@ public class P2 implements Runnable {
             if (parsedCommand.length > 1) {
                 listOfHosts = parsedCommand[1];
                 add();
+                System.out.println("PARSE DATASTREAM: " + command);
                 lookupTable.updateLookupTable(parsedCommand[2]);
 
                 try {
@@ -628,8 +634,7 @@ public class P2 implements Runnable {
     }
 
 
-
-/******************************************* Miscellaneous Helper Methods *********************************************/
+//------------------------------------------ Miscellaneous Helper Methods --------------------------------------------//
     /**
      * Makes sure that all hosts in the network have the same `hostInfo.txt` file in the nets directory.
      */
@@ -984,8 +989,7 @@ public class P2 implements Runnable {
     }
 
 
-
-/**************************************** Methods for Linda Thread & Socket Thread ************************************/
+//--------------------------------------- Methods for Linda Thread & Socket Thread -----------------------------------//
     /**
      * This method is messaged when creating a new thread for our Linda terminal.
      * This method will be handling all Linda Terminal commands `add()` `out()` `in()` `rd()`
