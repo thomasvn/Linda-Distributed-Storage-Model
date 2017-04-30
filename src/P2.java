@@ -272,7 +272,8 @@ public class P2 implements Runnable {
                         os.close();
                         s.close();
                     } catch (IOException e) {
-                        System.out.println(hostName + " was down when broadcasting to find tuple. Making backup request");
+                        System.out.print("\n" + hostName + " was down when broadcasting to find tuple. " +
+                                "Making backup request");
                         backupRequest(hostName, rawTuple, requestType);
                         continue;
                     }
@@ -309,7 +310,8 @@ public class P2 implements Runnable {
                     os.close();
                     s.close();
                 } catch (IOException e) {
-                    System.out.println(hostName + " should have had the tuple, but has crashed. Making request to backup");
+                    System.out.print("\n" + hostName + " should have had the tuple, but has crashed. " +
+                            "Making request to backup");
                     backupRequest(hostName, rawTuple, requestType);
                 }
             }
@@ -519,7 +521,7 @@ public class P2 implements Runnable {
                         if (parsedCommand[0].equals("in")) {
                             String tempFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/temp.txt";
                             deleteLine(rawStringTuple, tupleSpaceFilePath, tempFilePath);
-                            System.out.println("\nThe tuple (" + rawStringTuple + ") has been deleted from the "
+                            System.out.print("\nThe tuple (" + rawStringTuple + ") has been deleted from the "
                                     + "Tuple Space. ");
                             sendTupleSpaceToBackup();
                         }
@@ -615,7 +617,6 @@ public class P2 implements Runnable {
             listOfHosts = parsedCommand[1];
             lookupTable.updateLookupTable(parsedCommand[2]);
             if (parsedCommand.length == 4) {
-                System.out.println("It hit this");
                 saveTupleToDisk(parsedCommand[3], false, false);
             }
             add();

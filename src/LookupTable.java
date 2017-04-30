@@ -13,12 +13,22 @@ public class LookupTable {
     private ArrayList<ArrayList<Range>> lookupTable_ranges;
     private int SIZE = 100; // TODO: Change to 2^16
 
+
+    /**
+     * Constructor method which instantiates the two arraylists needed to represent the lookup table
+     */
     public LookupTable () {
         lookupTable_hosts = new ArrayList<>();
         lookupTable_ranges = new ArrayList<>();
     }
 
 
+    /**
+     * Adds a new host to the lookup table. The method will carve away at other hosts' ranges to allocate enough space
+     * for the new host's range
+     *
+     * @param hostName string of the new host's name
+     */
     public void addHost(String hostName) {
         ArrayList<Range> hostRange = new ArrayList<>();
 
@@ -40,7 +50,7 @@ public class LookupTable {
 
                 // Trim the maximum of the older host's range for the new host
                 hostRange.add(new Range(r.getMax() - numIndicesNeeded, r.getMax()));
-                r.setMax(r.getMax() - numIndicesNeeded);
+                r.setMax(r.getMax() - numIndicesNeeded - 1);
             }
         }
 
@@ -49,6 +59,12 @@ public class LookupTable {
     }
 
 
+    /**
+     * Removes a host from the lookup table. This method distributes the host's list of ranges to all other hosts
+     * that still remain in the lookup table.
+     *
+     * @param hostName string representing the host name of the host we are going to remove
+     */
     public void removeHost(String hostName) {
         int numRemainingHosts = lookupTable_hosts.size() - 1;
         ArrayList<Range> redistributedRanges = new ArrayList<>();
@@ -97,8 +113,9 @@ public class LookupTable {
     /**
      * Given a range number, it returns which host utilizes that range number.
      * This method will only be messaged in `P2.java` inside the method `getHostID()`
-     * @param rangeNum
-     * @return
+     *
+     * @param rangeNum an integer of the range number
+     * @return returns the index of the host which contains the range number
      */
     public int findHost(int rangeNum) {
         int indexOfHost = 0;
@@ -115,6 +132,8 @@ public class LookupTable {
 
 
     /**
+     * Takes the lookup table and turns it into a string that is strategically separated by delimiters
+     *
      * @return Format: "h1:0,26;`h2:50,76;`h3:34,46;84,96;`h4:26,34;76,84;46,50;96,100;42,46;92,96;"
      */
     public String toParseableString() {
@@ -136,7 +155,8 @@ public class LookupTable {
 
 
     /**
-     * Update the current state of this object's lookup table based on the parseable string that was passed ins
+     * Update the current state of this object's lookup table based on the parseable string that was passed in
+     *
      * @param parseableLookupTable Format: "h1:0,26;`h2:50,76;`h3:34,46;84,96;`h4:26,34;76,84;46,50;96,100;42,46;92,96;"
      */
     public void updateLookupTable(String parseableLookupTable) {
@@ -171,7 +191,7 @@ public class LookupTable {
 
 
     /**
-     *
+     * Clear the lookup table
      */
     public void clearTable() {
         lookupTable_hosts.clear();
@@ -180,8 +200,12 @@ public class LookupTable {
 
 
     /**
-     * Writes the lookupTable to /tmp/LOGIN/linda/HOST/nets/lookupTable.txt using the current state of the lookup table
-     * @param filePath
+     * Writes the lookup table to the file path that is passed in.
+     *
+     * The file path that will normally be passed in:
+     * /tmp/LOGIN/linda/HOST/nets/lookupTable.txt
+     *
+     * @param filePath string representation of the file path
      */
     public void saveToFile(String filePath) {
         // Create necessary file paths for the lookup table
@@ -214,11 +238,21 @@ public class LookupTable {
     }
 
 
+    /**
+     * Getter for the size of the lookup table
+     *
+     * @return integer value of size
+     */
     public int getSIZE() {
         return this.SIZE;
     }
 
 
+    /**
+     * Accessible way to view the lookup table
+     *
+     * @return string representation of lookup table for display
+     */
     @Override
     public String toString() {
         String lookupTable = "";
@@ -238,6 +272,11 @@ public class LookupTable {
     }
 
 
+    /**
+     * Driver method to test the lookup table
+     *
+     * @param args
+     */
     public static void main(String[] args) {
         LookupTable lookupTable = new LookupTable();
         lookupTable.addHost("h1");
