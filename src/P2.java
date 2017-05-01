@@ -19,7 +19,8 @@ public class P2 implements Runnable {
     private static String listOfHosts = "";
     private static boolean blocked = false;
     private static String tupleThatIsBlocking;
-    private static ArrayList<String> requestedTuples = new ArrayList<>(); // TODO: Implement this
+    private static ArrayList<String> inRequestedTuples = new ArrayList<>();
+    private static ArrayList<String> rdRequestedTuples = new ArrayList<>();
     private static LookupTable lookupTable;
 
 //----------------------------------------------- Linda Commands -----------------------------------------------------//
@@ -46,6 +47,20 @@ public class P2 implements Runnable {
 
             // Delete pre-existing lookup table to recreate it
             lookupTable.clearTable();
+
+            // Create a new tuple space for the newly added host
+            try {
+                String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/";
+                dir = new File(tupleSpaceFilePath);
+                dir.mkdirs();
+
+                tupleSpaceFilePath+="tuples.txt";
+                dir = new File(tupleSpaceFilePath);
+                dir.delete();
+                dir.createNewFile();
+            } catch(IOException e) {
+                e.printStackTrace();
+            }
 
             BufferedWriter bw = new BufferedWriter(new FileWriter(hostsFilePath, true));
 
@@ -419,9 +434,46 @@ public class P2 implements Runnable {
 
         else if (parsedCommand[0].equals("out")) {
             String rawStringTuple = parsedCommand[1];
+            Tuple tupleBeingAdded = new Tuple(rawStringTuple);
 
             try {
-                // TODO: Check to see if this tuple is in the tuple array
+                // Check to see if this is a tuple that somebody had previously requested
+                for (String s : inRequestedTuples) {
+                    String stringTuplePreviouslyRequested = s.split("~")[0];
+                    String requesterIPAddr = s.split("~")[1];
+                    int requesterPortNum = Integer.parseInt(s.split("~")[2]);
+
+                    Tuple tuplePreviouslyRequested = new Tuple(stringTuplePreviouslyRequested);
+
+                    if (tupleBeingAdded.equals(tuplePreviouslyRequested)) {
+                        String outputMessage = "ACK~" + rawStringTuple + "~" + IP_ADDRESS;
+                        try {
+                            sendDatastreamMessage(requesterIPAddr, requesterPortNum, outputMessage);
+                        } catch (Exception e) {
+                            System.out.println("The host requesting the tuple (" + rawStringTuple + ") has been killed");
+                        }
+                    }
+
+                    // Do not need to add it to tuple space because it was an in() command
+                    return;
+                }
+
+                for (String s : rdRequestedTuples) {
+                    String stringTuplePreviouslyRequested = s.split("~")[0];
+                    String requesterIPAddr = s.split("~")[1];
+                    int requesterPortNum = Integer.parseInt(s.split("~")[2]);
+
+                    Tuple tuplePreviouslyRequested = new Tuple(stringTuplePreviouslyRequested);
+
+                    if (tupleBeingAdded.equals(tuplePreviouslyRequested)) {
+                        String outputMessage = "ACK~" + rawStringTuple + "~" + IP_ADDRESS;
+                        try {
+                            sendDatastreamMessage(requesterIPAddr, requesterPortNum, outputMessage);
+                        } catch (Exception e) {
+                            System.out.println("The host requesting the tuple (" + rawStringTuple + ") has been killed");
+                        }
+                    }
+                }
 
                 // Open a writer to the tuples file on this host
                 String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt";
@@ -487,7 +539,13 @@ public class P2 implements Runnable {
                 }
 
                 if (!found) {
-                    requestedTuples.add(rawStringTuple);
+                    if (parsedCommand[0].equals("in")) {
+                        String rawStringTupleInfo = rawStringTuple + "~" + requesterIPAddr + "~" + requesterPortNum;
+                        inRequestedTuples.add(rawStringTupleInfo);
+                    } else {
+                        String rawStringTupleInfo = rawStringTuple + "~" + requesterIPAddr + "~" + requesterPortNum;
+                        rdRequestedTuples.add(rawStringTupleInfo);
+                    }
                 }
 
                 reader.close();
@@ -504,7 +562,6 @@ public class P2 implements Runnable {
             if (parsedCommand.length > 1) {
                 listOfHosts = parsedCommand[1];
                 add();
-                System.out.println("PARSE DATASTREAM: " + command);
                 lookupTable.updateLookupTable(parsedCommand[2]);
 
                 try {
@@ -533,6 +590,7 @@ public class P2 implements Runnable {
             dir = new File(hostInfoFilePath);
             deleteDir(dir);
 
+            System.out.println("You have been removed from the network.");
         }
 
         else if (parsedCommand[0].equals("backup")) {
@@ -719,7 +777,7 @@ public class P2 implements Runnable {
             sendDatastreamMessage(backupHostIpAddr, backupHostPortNum, message);
         } catch (Exception e) {
             System.out.println("Tried to request information from " + backupHostIpAddr + " to restore but this host" +
-                    "is not currently available");
+                    " is not currently available");
         }
 
 
@@ -997,20 +1055,6 @@ public class P2 implements Runnable {
         } catch (ArrayIndexOutOfBoundsException e) {
             System.out.println("Please specify the host name when running the executable");
             return;
-        }
-
-        // Create a new tuple space
-        try {
-            String tupleSpaceFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/";
-            File dir = new File(tupleSpaceFilePath);
-            dir.mkdirs();
-
-            tupleSpaceFilePath+="tuples.txt";
-            dir = new File(tupleSpaceFilePath);
-            dir.delete();
-            dir.createNewFile();
-        } catch(IOException e) {
-            e.printStackTrace();
         }
 
         try {
