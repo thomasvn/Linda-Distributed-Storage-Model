@@ -95,9 +95,6 @@ public class P2 implements Runnable {
     private void out(String rawTuple) {
         String hostInfo = null;
 
-        // Instantiate the tuple object
-        Tuple tuple = new Tuple(rawTuple);
-
         try {
             // Retrieve the information of the correct host
             String hostsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/hostInfo.txt";
@@ -123,22 +120,13 @@ public class P2 implements Runnable {
         String ipAddr = specificHostInfo[1];
         int portNum = Integer.parseInt(specificHostInfo[2]);
 
+        String outputMessage = "out~" + rawTuple;
         try {
-            // Create a socket connection to the correct host
-            Socket s = new Socket();
-            s.connect(new InetSocketAddress(ipAddr, portNum));
-
-            // Send a message in the datastream to write to the TupleSpace
-            OutputStream os = s.getOutputStream();
-            String outputMessage = "out~" + rawTuple;
-            os.write(outputMessage.getBytes());
-            os.close();
-
-            s.close();
-        } catch(IOException e) {
+            sendDatastreamMessage(ipAddr, portNum, outputMessage);
+        } catch (Exception e) {
             backupOut(rawTuple, hostName);
-//            e.printStackTrace();
         }
+        System.out.println("put tuple (" + rawTuple + ") on " + ipAddr);
     }
 
 
@@ -210,23 +198,12 @@ public class P2 implements Runnable {
 
         // Send a message to all nodes who need to be deleted
         for (int i = 0; i < hostsToRemove_ipAddr.size(); i++) {
+            String deleteMessage = "delete~" + listOfHosts + "~" + lookupTable.toParseableString() + "~" + HOSTNAME;
             try {
-                Socket s = new Socket();
-                s.connect(new InetSocketAddress(hostsToRemove_ipAddr.get(i),
-                        Integer.parseInt(hostsToRemove_portNum.get(i))));
-
-                // Preparing to send necessary information to hosts that need to be deleted
-                System.out.println("DELETE: " + lookupTable);
-                String deleteMessage = "delete~" + listOfHosts + "~" + lookupTable.toParseableString() + "~" + HOSTNAME;
-
-                // Sending the string `listOfHosts` and `lookupTableString` to all individual hosts
-                OutputStream os = s.getOutputStream();
-                os.write(deleteMessage.getBytes());
-                os.close();
-
-                s.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+                sendDatastreamMessage(hostsToRemove_ipAddr.get((i)), Integer.parseInt(hostsToRemove_portNum.get(i)),
+                        deleteMessage);
+            } catch (Exception e) {
+                System.out.println("You cannot delete a node that is currently unavailable");
             }
         }
     }
@@ -254,25 +231,18 @@ public class P2 implements Runnable {
                     hostName = specificHostInfo[0];
                     String ipAddr = specificHostInfo[1];
                     int portNum = Integer.parseInt(specificHostInfo[2]);
+                    String outputMessage = "";
+
+                    if (requestType.equals("rd")) {
+                        outputMessage = "rd~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
+                    } else if (requestType.equals("in")) {
+                        outputMessage = "in~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
+                    }
 
                     try {
-                        // Create a socket connection to the correct host
-                        Socket s = new Socket();
-                        s.connect(new InetSocketAddress(ipAddr, portNum));
-
-                        // Send a message in the datastream to write to the TupleSpace
-                        OutputStream os = s.getOutputStream();
-                        if (requestType.equals("rd")) {
-                            String outputMessage = "rd~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
-                            os.write(outputMessage.getBytes());
-                        } else if (requestType.equals("in")) {
-                            String outputMessage = "in~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
-                            os.write(outputMessage.getBytes());
-                        }
-                        os.close();
-                        s.close();
-                    } catch (IOException e) {
-                        System.out.print("\n" + hostName + " was down when broadcasting to find tuple. " +
+                        sendDatastreamMessage(ipAddr, portNum, outputMessage);
+                    } catch (Exception e) {
+                        System.out.println(hostName + " was down when broadcasting to find tuple. " +
                                 "Making backup request");
                         backupRequest(hostName, rawTuple, requestType);
                         continue;
@@ -292,25 +262,18 @@ public class P2 implements Runnable {
                 hostName = specificHostInfo[0];
                 String ipAddr = specificHostInfo[1];
                 int portNum = Integer.parseInt(specificHostInfo[2]);
+                String outputMessage = "";
+
+                if (requestType.equals("rd")) {
+                    outputMessage = "rd~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
+                } else if (requestType.equals("in")) {
+                    outputMessage = "in~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
+                }
 
                 try {
-                    // Create a socket connection to the correct host
-                    Socket s = new Socket();
-                    s.connect(new InetSocketAddress(ipAddr, portNum));
-
-                    // Send a message in the datastream to write to the TupleSpace
-                    OutputStream os = s.getOutputStream();
-                    if (requestType.equals("rd")) {
-                        String outputMessage = "rd~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
-                        os.write(outputMessage.getBytes());
-                    } else if (requestType.equals("in")) {
-                        String outputMessage = "in~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~false";
-                        os.write(outputMessage.getBytes());
-                    }
-                    os.close();
-                    s.close();
-                } catch (IOException e) {
-                    System.out.print("\n" + hostName + " should have had the tuple, but has crashed. " +
+                    sendDatastreamMessage(ipAddr, portNum, outputMessage);
+                } catch (Exception e) {
+                    System.out.println(hostName + " should have had the tuple, but has crashed. " +
                             "Making request to backup");
                     backupRequest(hostName, rawTuple, requestType);
                 }
@@ -338,7 +301,13 @@ public class P2 implements Runnable {
         int backupHostPortNum = Integer.parseInt(specificBackupHostInfo[2]);
 
         String outputMessage = "backup~" + rawTuple + "~true";
-        sendDatastreamMessage(backupHostIpAddr, backupHostPortNum, outputMessage);
+        try {
+            sendDatastreamMessage(backupHostIpAddr, backupHostPortNum, outputMessage);
+        } catch (Exception e) {
+            System.out.println("The process was unable to connect with the original host and the backup host. Please" +
+                    "check to make sure you have not killed two processes.");
+        }
+        System.out.println("put tuple (" + rawTuple + ") on " + backupHostIpAddr);
     }
 
 
@@ -348,30 +317,23 @@ public class P2 implements Runnable {
      * @param requestType
      */
     private void backupRequest(String crashedHostName, String rawTuple, String requestType) {
+        String backupHostInfo = getBackupHostInfo(crashedHostName);
+
+        // Parse information about the host
+        String[] specificHostInfo = backupHostInfo.split(" ");
+        String ipAddr = specificHostInfo[1];
+        int portNum = Integer.parseInt(specificHostInfo[2]);
+        String outputMessage = "";
+
+        if (requestType.equals("rd")) {
+            outputMessage = "rd~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~true";
+        } else if (requestType.equals("in")) {
+            outputMessage = "in~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~true";
+        }
+
         try {
-            String backupHostInfo = getBackupHostInfo(crashedHostName);
-
-            // Parse information about the host
-            String[] specificHostInfo = backupHostInfo.split(" ");
-            String ipAddr = specificHostInfo[1];
-            int portNum = Integer.parseInt(specificHostInfo[2]);
-
-            // Create a socket connection to the correct host
-            Socket s = new Socket();
-            s.connect(new InetSocketAddress(ipAddr, portNum));
-
-            // Send a message in the datastream to write to the TupleSpace
-            OutputStream os = s.getOutputStream();
-            if (requestType.equals("rd")) {
-                String outputMessage = "rd~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~true";
-                os.write(outputMessage.getBytes());
-            } else if (requestType.equals("in")) {
-                String outputMessage = "in~" + rawTuple + "~" + IP_ADDRESS + "~" + PORT_NUMBER + "~true";
-                os.write(outputMessage.getBytes());
-            }
-            os.close();
-            s.close();
-        } catch(IOException e) {
+            sendDatastreamMessage(ipAddr, portNum, outputMessage);
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -471,8 +433,6 @@ public class P2 implements Runnable {
                 bw.flush();
                 bw.close();
 
-                System.out.print("Tuple has been added to this host: (" + rawStringTuple + ") ");
-
                 // Back up the new tuples that have been added to this host
                 sendTupleSpaceToBackup();
             } catch(IOException e) {
@@ -481,14 +441,11 @@ public class P2 implements Runnable {
         }
 
         else if (parsedCommand[0].equals("rd") || parsedCommand[0].equals("in")) {
+            // Passed the command of "rd or in~tuple~requesterIpAddr~requesterPortNum~requestingFromBackup"
             String rawStringTuple = parsedCommand[1];
             String requesterIPAddr = parsedCommand[2];
             int requesterPortNum = Integer.parseInt(parsedCommand[3]);
             boolean requestingFromBackup = Boolean.valueOf(parsedCommand[4]);
-
-            System.out.print("A host has requested the tuple (" + rawStringTuple + ") ");
-
-            // Create a tuple object from the "rd" command
             Tuple tupleInSearch = new Tuple(rawStringTuple);
 
             // Check to see if the tuple in search is being maintained in this Tuple Space
@@ -511,18 +468,17 @@ public class P2 implements Runnable {
                     if (tupleInSearch.equals(tupleInFile)) {
                         found = true;
 
-                        String outputMessage = "ACK~" + rawStringTuple + "~" + HOSTNAME;
-                        sendDatastreamMessage(requesterIPAddr, requesterPortNum, outputMessage);
-
-                        System.out.print("\nThe tuple (" + rawStringTuple + ") has been found in this host's " +
-                                "Tuple Space. " + "An ACK has been sent back to the requester. ");
+                        String outputMessage = "ACK~" + rawStringTuple + "~" + IP_ADDRESS;
+                        try {
+                            sendDatastreamMessage(requesterIPAddr, requesterPortNum, outputMessage);
+                        } catch (Exception e) {
+                            System.out.println("The host requesting the tuple (" + rawStringTuple + ") has been killed");
+                        }
 
                         // If the "in" command was invoked, we will delete the proper tuple and update the backups
                         if (parsedCommand[0].equals("in")) {
                             String tempFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/temp.txt";
                             deleteLine(rawStringTuple, tupleSpaceFilePath, tempFilePath);
-                            System.out.print("\nThe tuple (" + rawStringTuple + ") has been deleted from the "
-                                    + "Tuple Space. ");
                             sendTupleSpaceToBackup();
                         }
 
@@ -541,7 +497,7 @@ public class P2 implements Runnable {
         }
 
         else if (parsedCommand[0].equals("delete")) {
-            // Should return command of "delete~listofhosts~parseableStringLookupTable"
+            // Passed the command of "delete~listofhosts~parseableStringLookupTable"
             String tuplesFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/tuples/tuples.txt";
 
             // Redistribute the tuples as long as the delete command is not being called on the last node in the net
@@ -580,14 +536,14 @@ public class P2 implements Runnable {
         }
 
         else if (parsedCommand[0].equals("backup")) {
-            // Should return command of "backup~parseableTupleSpaceString~append"
+            // Passed the command of "backup~parseableTupleSpaceString~append"
             if (parsedCommand.length == 3) {
                 saveTupleToDisk(parsedCommand[1], true, Boolean.valueOf(parsedCommand[2]));
             }
         }
 
         else if (parsedCommand[0].equals("restore")) {
-            // Should return command of "restore~requesterHostName~requesterIpAddr~requesterPortNum"
+            // Passed the command of "restore~requesterHostName~requesterIpAddr~requesterPortNum"
             String requesterHostName = parsedCommand[1];
             String requesterIpAddr = parsedCommand[2];
             int requesterPortNum = Integer.parseInt(parsedCommand[3]);
@@ -609,11 +565,15 @@ public class P2 implements Runnable {
             // Send back the nets file, backuptuples.txt, and lookuptable
             String restoreInfo = "restoreACK~" + newListofHosts + "~" + lookupTable.toParseableString() + "~"
                     + tupleSpaceToParseableString(true);
-            sendDatastreamMessage(requesterIpAddr, requesterPortNum, restoreInfo);
+            try {
+                sendDatastreamMessage(requesterIpAddr, requesterPortNum, restoreInfo);
+            } catch (Exception e) {
+                System.out.println(requesterIpAddr + " was trying to restore after a restart but has crashed again");
+            }
         }
 
         else if (parsedCommand[0].equals("restoreACK")) {
-            // Should return command of "restoreACK~listOfHosts~lookupTableString~backupTuplesString"
+            // Passed the command of "restoreACK~listOfHosts~lookupTableString~backupTuplesString"
             listOfHosts = parsedCommand[1];
             lookupTable.updateLookupTable(parsedCommand[2]);
             if (parsedCommand.length == 4) {
@@ -624,8 +584,8 @@ public class P2 implements Runnable {
         }
 
         else if (parsedCommand[0].equals("ACK") && parsedCommand[1].equals(tupleThatIsBlocking)) {
-            // Should return ACK of "ACK~rawTuple~hostName"
-            System.out.println("\nACK Received! " + parsedCommand[2] + " maintains the tuple:(" + parsedCommand[1] + ")");
+            // Passed the command "ACK~rawTuple~hostIpAddr"
+            System.out.println("get tuple (" + parsedCommand[1] + ") on " + parsedCommand[2]);
             unblockThread();
         }
 
@@ -692,7 +652,12 @@ public class P2 implements Runnable {
         String parseableTupleString = tupleSpaceToParseableString(false);
         String outputMessage = "backup~" + parseableTupleString + "~false";
 
-        sendDatastreamMessage(backupIpAddr, backupPortNum, outputMessage);
+        try {
+            sendDatastreamMessage(backupIpAddr, backupPortNum, outputMessage);
+        } catch (Exception e) {
+            // Unable to connect with the backup host
+            // TODO: When the backup host is alive again, we need to back up this tuple space
+        }
     }
 
 
@@ -750,7 +715,13 @@ public class P2 implements Runnable {
 
         // Send message to backup host to "Restore"
         String message = "restore~" + HOSTNAME + "~" + IP_ADDRESS + "~" + PORT_NUMBER;
-        sendDatastreamMessage(backupHostIpAddr,backupHostPortNum, message);
+        try {
+            sendDatastreamMessage(backupHostIpAddr, backupHostPortNum, message);
+        } catch (Exception e) {
+            System.out.println("Tried to request information from " + backupHostIpAddr + " to restore but this host" +
+                    "is not currently available");
+        }
+
 
         // Datastream Handler will receive info about nets file, lookup table, and tuple space. It will then broadcast
         // its new hostInfo.txt
@@ -851,21 +822,17 @@ public class P2 implements Runnable {
      * @param portNum
      * @param message
      */
-    private void sendDatastreamMessage(String ipAddr, int portNum, String message) {
-        try {
-            // Create a socket connection to the correct host
-            Socket s = new Socket();
-            s.connect(new InetSocketAddress(ipAddr, portNum));
+    private void sendDatastreamMessage(String ipAddr, int portNum, String message) throws Exception {
+        // Create a socket connection to the correct host
+        Socket s = new Socket();
+        s.connect(new InetSocketAddress(ipAddr, portNum));
 
-            // Send a message in the datastream to write to the TupleSpace
-            OutputStream os = s.getOutputStream();
-            os.write(message.getBytes());
-            os.close();
+        // Send a message in the datastream to write to the TupleSpace
+        OutputStream os = s.getOutputStream();
+        os.write(message.getBytes());
+        os.close();
 
-            s.close();
-        } catch(IOException e) {
-            e.printStackTrace();
-        }
+        s.close();
     }
 
 

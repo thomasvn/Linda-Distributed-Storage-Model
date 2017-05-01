@@ -5,13 +5,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 
+
 /**
  * Partition the Lookup Table based on the number of hosts added
  */
 public class LookupTable {
     private ArrayList<String> lookupTable_hosts;
     private ArrayList<ArrayList<Range>> lookupTable_ranges;
-    private int SIZE = 100; // TODO: Change to 2^16
+    private int SIZE = (int) Math.pow(2,16);
 
 
     /**
