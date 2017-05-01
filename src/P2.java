@@ -88,7 +88,8 @@ public class P2 implements Runnable {
 
     /**
      * Broadcasts a request to all hosts to retrieve the rawTuple and delete it in its respective host
-     * @param rawTuple
+     *
+     * @param rawTuple string of parseable tuple
      */
     private void in(String rawTuple) {
         request(rawTuple, "in");
@@ -97,7 +98,8 @@ public class P2 implements Runnable {
 
     /**
      * Broadcasts a request to all hosts to retrieve the rawTuple
-     * @param rawTuple
+     *
+     * @param rawTuple string of parseable tuple
      */
     private void rd(String rawTuple) {
         request(rawTuple, "rd");
@@ -105,8 +107,10 @@ public class P2 implements Runnable {
 
 
     /**
-     * Places a tuple into the Tuple Space
-     * @param rawTuple
+     * Places a tuple into the Tuple Space. Method finds the correct host to connect to by utilizing a hash. It then
+     * instructs the correct host to add the tuple passed to this method.
+     *
+     * @param rawTuple string of parseable tuple
      */
     private void out(String rawTuple) {
         String hostInfo = null;
@@ -147,8 +151,10 @@ public class P2 implements Runnable {
 
 
     /**
-     * Removes the host from our `hostInfo.txt` file on disk, and also our lookup table
-     * @param hostNames
+     * Removes the host from our `hostInfo.txt` file on disk, and also our lookup table. The node that is deleted will
+     * have its /nets and /tuples directories deleted. The node that is deleted will also be forced to exit
+     *
+     * @param hostNames list of host names we will delete
      */
     private void delete(String hostNames) {
         String hostsFilePath = "/tmp/" + LOGIN + "/linda/" + HOSTNAME + "/nets/hostInfo.txt";
@@ -227,8 +233,9 @@ public class P2 implements Runnable {
 
     /**
      * Handles the `in()` and `rd()` Linda commands
-     * @param rawTuple
-     * @param requestType
+     *
+     * @param rawTuple string of a parseable tuple
+     * @param requestType describes what kind of a request we are making
      */
     private void request(String rawTuple, String requestType) {
         String hostInfo = "";
@@ -307,6 +314,7 @@ public class P2 implements Runnable {
 
     /**
      * This method saves tuples to the crashed host's backup file while the original host is unavailable
+     *
      * @param rawTuple a single tuple as a String object
      * @param crashedHostName name of the host that has crashed
      */
@@ -328,9 +336,10 @@ public class P2 implements Runnable {
 
 
     /**
+     * This method accesses the crashed host's tuple space by manipulating the backupTuples.txt file
      *
-     * @param rawTuple
-     * @param requestType
+     * @param rawTuple string of a tuple we are looking for
+     * @param requestType describes what kind of a request we're making
      */
     private void backupRequest(String crashedHostName, String rawTuple, String requestType) {
         String backupHostInfo = getBackupHostInfo(crashedHostName);
@@ -359,7 +368,8 @@ public class P2 implements Runnable {
     /**
      * This method is run on the Linda thread and determines which method to message based on the the user provided
      * input on the command line
-     * @param command
+     *
+     * @param command string of command that was issued on terminal
      */
     private void parseLindaCommand(String command) {
         // Remove all spaces
@@ -377,9 +387,30 @@ public class P2 implements Runnable {
                 while (parsedCommand.find()) {
                     // Split into array by using commas as delimiters
                     String[] tokenizedCommand = command.substring(parsedCommand.start(), parsedCommand.end()).split(",");
+                    if (tokenizedCommand.length != 3) {
+                        System.out.println("Improper use of add() command");
+                        continue;
+                    }
+                    String hostName = tokenizedCommand[0];
+                    String ipAddr = tokenizedCommand[1];
+                    int portNum = Integer.parseInt(tokenizedCommand[2]);
+
+                    // Test to see if it is a valid IP or PortNum
+                    try {
+                        sendDatastreamMessage(ipAddr, portNum, "test");
+                    } catch (Exception e) {
+                        System.out.println(hostName + " did not have a valid IP or Port#. Not added to network");
+                        continue;
+                    }
+
+                    // Make sure that the host name is not already used
+                    if (listOfHosts.contains(hostName)) {
+                        System.out.println(hostName + " is already used in this network. Choose a new name.");
+                        continue;
+                    }
 
                     // Add this host to a String managed by this Server Instance
-                    listOfHosts += (tokenizedCommand[0] + " " + tokenizedCommand[1] + " " + tokenizedCommand[2] + ",");
+                    listOfHosts += (hostName + " " + ipAddr + " " + portNum + ",");
                 }
                 add();
 
@@ -414,6 +445,8 @@ public class P2 implements Runnable {
                     delete(command.substring(parsedCommand.start(), parsedCommand.end()));
                 }
             }
+        } else {
+            System.out.println("Linda command was improperly issued.");
         }
     }
 
@@ -421,7 +454,8 @@ public class P2 implements Runnable {
     /**
      * This method is run on the Listener thread and determines which method to message based on the data that other
      * hosts sent it
-     * @param command
+     *
+     * @param command String of a command sent from other nodes in the network
      */
     private void parseDataStreamCommand(String command) {
         // Parse the DataStream Command
@@ -565,7 +599,6 @@ public class P2 implements Runnable {
             if (parsedCommand.length > 1) {
                 listOfHosts = parsedCommand[1];
                 add();
-                System.out.println("PARSED COMAND: " + command);
                 lookupTable.updateLookupTable(parsedCommand[2]);
 
                 try {
@@ -692,7 +725,8 @@ public class P2 implements Runnable {
 
                     s.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    // One of the nodes in our network could not be broadcasted to
+                    continue;
                 }
             }
         }
@@ -700,7 +734,7 @@ public class P2 implements Runnable {
 
 
     /**
-     *
+     * Takes the current tuple space and sends it to the backup host in the network
      */
     private void sendTupleSpaceToBackup() {
         String backupHost = getBackupHostInfo(HOSTNAME);
@@ -715,13 +749,13 @@ public class P2 implements Runnable {
             sendDatastreamMessage(backupIpAddr, backupPortNum, outputMessage);
         } catch (Exception e) {
             // Unable to connect with the backup host
-            // TODO: When the backup host is alive again, we need to back up this tuple space
         }
     }
 
 
     /**
-     * Parses the input of tuples and saves it to the backupTuples.txt file
+     * Parses the input of tuples and saves it to the corresponding tuples file
+     *
      * @param parseableString Needs to be inputted a list of tuples separated by the ` delimiter
      */
     private void saveTupleToDisk(String parseableString, Boolean saveToBackup, Boolean append) {
@@ -762,10 +796,9 @@ public class P2 implements Runnable {
 
 
     /**
-     *
+     * Requests information from the backup host after the current host has restarted
      */
     private void restoreFromBackup() {
-        // TODO: This is assuming we do not add() or delete() a node while there is a host that has crashed
         String backupHostInfo = getBackupHostInfo(HOSTNAME);
         String specificBackupHostInfo[] = backupHostInfo.split(" ");
         String backupHostName = specificBackupHostInfo[0];
@@ -781,16 +814,15 @@ public class P2 implements Runnable {
                     " is not currently available");
         }
 
-
-        // Datastream Handler will receive info about nets file, lookup table, and tuple space. It will then broadcast
-        // its new hostInfo.txt
+        // Datastream Handler will receive info about nets file, lookup table, and tuple space. It will then broadcast its new hostInfo.txt
     }
 
 
     /**
      * Returns the information of this current node's backup node. Each node's backup node is the node that is listed
      * after this one in the `hostInfo.txt` file.
-     * @return
+     *
+     * @return String containing the Host name, IP, Port number of the backup host in the network
      */
     private String getBackupHostInfo(String currentHostName) {
         String hostInfo = "";
@@ -826,6 +858,7 @@ public class P2 implements Runnable {
 
 
     /**
+     * Makes the tuple space a parseable string
      *
      * @return List of tuples all separated by the ` delimiter
      */
@@ -852,7 +885,8 @@ public class P2 implements Runnable {
 
             reader.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            // An exception will be thrown if the backupTuples file does not yet exist
+            return "";
         }
 
         return result;
@@ -861,8 +895,9 @@ public class P2 implements Runnable {
 
     /**
      * Utilizes the MD5 Hash to retrieve the index of the host who should hold the parameter `rawTuple`
-     * @param rawTuple
-     * @return
+     *
+     * @param rawTuple tuple that we are hashing
+     * @return returns the index of the node in the hostInfo.txt file
      */
     private int getHostID(String rawTuple) {
         String hashedTuple = hash(rawTuple);
@@ -877,9 +912,10 @@ public class P2 implements Runnable {
 
     /**
      * Generic method to send a message to a certain host through the datastream
-     * @param ipAddr
-     * @param portNum
-     * @param message
+     *
+     * @param ipAddr String of destination IP
+     * @param portNum Integer of destination Port number
+     * @param message String plaintext message we want to send
      */
     private void sendDatastreamMessage(String ipAddr, int portNum, String message) throws Exception {
         // Create a socket connection to the correct host
@@ -897,7 +933,8 @@ public class P2 implements Runnable {
 
     /**
      * Blocks the current thread that it is called un
-     * @param rawTuple
+     *
+     * @param rawTuple tuple that is causing the thread to block
      */
     private void blockThread(String rawTuple) {
         blocked = true;
@@ -926,7 +963,8 @@ public class P2 implements Runnable {
 
     /**
      * Deletes a line from `tuples.txt` that corresponds to the String passed as a parameter
-     * @param lineToRemove
+     *
+     * @param lineToRemove String of line we are looking to remove
      */
     private void deleteLine(String lineToRemove, String inputFilePath, String tempFilePath) {
         File inputFile = new File(inputFilePath);
@@ -956,8 +994,9 @@ public class P2 implements Runnable {
 
 
     /**
+     * Deletes an entire directory
      *
-     * @param file
+     * @param file File object which would contain the proper filepath
      */
     void deleteDir(File file) {
         File[] contents = file.listFiles();
@@ -972,8 +1011,9 @@ public class P2 implements Runnable {
 
     /**
      * Helper method to turn hex to decimal
-     * @param s
-     * @return
+     *
+     * @param s String representing hex
+     * @return integer value of hex
      */
     private int hexToDecimal(String s) {
         String digits = "0123456789ABCDEF";
@@ -991,8 +1031,11 @@ public class P2 implements Runnable {
 
     /**
      * This method is implemented assuming we are given a tuple that begins with "(" and ends with ")"
-     * @param rawTuple
-     * @return
+     *
+     * Uses MD5 Hash given a tuple
+     *
+     * @param rawTuple String of tuple
+     * @return String representation of hex value returned from hash
      */
     private String hash(String rawTuple) {
         String md5Hash = null;
@@ -1019,7 +1062,7 @@ public class P2 implements Runnable {
 //--------------------------------------- Methods for Linda Thread & Socket Thread -----------------------------------//
     /**
      * This method is messaged when creating a new thread for our Linda terminal.
-     * This method will be handling all Linda Terminal commands `add()` `out()` `in()` `rd()`
+     * This method will be handling all Linda Terminal commands `add()` `out()` `in()` `rd()` `delete()`
      */
     @Override
     public void run() {
@@ -1043,7 +1086,8 @@ public class P2 implements Runnable {
 
 
     /**
-     * This method listens and handles any of the data streamed from other hosts
+     * This method listens and handles any messages received from other hosts
+     *
      * @param args
      */
     public void listener(String[] args) {
@@ -1112,6 +1156,7 @@ public class P2 implements Runnable {
 
     /**
      * The Driver Method
+     *
      * @param args
      */
     public static void main(String[] args) {
