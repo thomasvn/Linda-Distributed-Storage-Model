@@ -93,14 +93,14 @@ public class Tuple {
             if (tuple.getTupleTypeElement(i).equals("variable")) {
                 String variable = tuple.getTupleElement(i);
                 String[] parsedVariable = variable.split(":");
-                if (!this.getTupleTypeElement(i).equals(parsedVariable[1])) {
+                if (!this.getTupleTypeElement(i).equalsIgnoreCase(parsedVariable[1])) {
                     return false;
                 }
             }
             else if(this.getTupleTypeElement(i).equals("variable")){
                 String variable = this.getTupleElement(i);
                 String[] parsedVariable = variable.split(":");
-                if (!tuple.getTupleTypeElement(i).equals(parsedVariable[1])) {
+                if (!tuple.getTupleTypeElement(i).equalsIgnoreCase(parsedVariable[1])) {
                     return false;
                 }
             }

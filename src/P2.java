@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import static java.lang.System.exit;
 
 
 public class P2 implements Runnable {
@@ -213,7 +214,7 @@ public class P2 implements Runnable {
 
         // Send a message to all nodes who need to be deleted
         for (int i = 0; i < hostsToRemove_ipAddr.size(); i++) {
-            String deleteMessage = "delete~" + listOfHosts + "~" + lookupTable.toParseableString() + "~" + HOSTNAME;
+            String deleteMessage = "delete~" + listOfHosts + "~" + lookupTable.toParseableString();
             try {
                 sendDatastreamMessage(hostsToRemove_ipAddr.get((i)), Integer.parseInt(hostsToRemove_portNum.get(i)),
                         deleteMessage);
@@ -445,7 +446,8 @@ public class P2 implements Runnable {
 
                     Tuple tuplePreviouslyRequested = new Tuple(stringTuplePreviouslyRequested);
 
-                    if (tupleBeingAdded.equals(tuplePreviouslyRequested)) {
+                    if (tuplePreviouslyRequested.equals(tupleBeingAdded)) {
+                        inRequestedTuples.remove(s);
                         String outputMessage = "ACK~" + rawStringTuple + "~" + IP_ADDRESS;
                         try {
                             sendDatastreamMessage(requesterIPAddr, requesterPortNum, outputMessage);
@@ -465,7 +467,8 @@ public class P2 implements Runnable {
 
                     Tuple tuplePreviouslyRequested = new Tuple(stringTuplePreviouslyRequested);
 
-                    if (tupleBeingAdded.equals(tuplePreviouslyRequested)) {
+                    if (tuplePreviouslyRequested.equals(tupleBeingAdded)) {
+                        rdRequestedTuples.remove(s);
                         String outputMessage = "ACK~" + rawStringTuple + "~" + IP_ADDRESS;
                         try {
                             sendDatastreamMessage(requesterIPAddr, requesterPortNum, outputMessage);
@@ -562,6 +565,7 @@ public class P2 implements Runnable {
             if (parsedCommand.length > 1) {
                 listOfHosts = parsedCommand[1];
                 add();
+                System.out.println("PARSED COMAND: " + command);
                 lookupTable.updateLookupTable(parsedCommand[2]);
 
                 try {
@@ -591,6 +595,7 @@ public class P2 implements Runnable {
             deleteDir(dir);
 
             System.out.println("You have been removed from the network.");
+            exit(0);
         }
 
         else if (parsedCommand[0].equals("backup")) {
@@ -645,10 +650,6 @@ public class P2 implements Runnable {
             // Passed the command "ACK~rawTuple~hostIpAddr"
             System.out.println("get tuple (" + parsedCommand[1] + ") on " + parsedCommand[2]);
             unblockThread();
-        }
-
-        else if (parsedCommand[0].equals("ACK") && !parsedCommand[1].equals(tupleThatIsBlocking)) {
-            // TODO: WE ARE NO LONGER LOOKING FOR THIS TUPLE
         }
     }
 

@@ -81,7 +81,8 @@ public class LookupTable {
         // Find index of host in the lookup table
         int hostIndex = lookupTable_hosts.indexOf(hostName);
         if (hostIndex == -1) {
-            System.out.println("Host was not found in the Lookup Table");
+            System.out.println("Host was not found in the Lookup Table. Cancelling operation");
+            return;
         }
 
         // Use this index to refer to the list of ranges
